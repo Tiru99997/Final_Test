@@ -271,7 +271,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         const data = await response.json();
         setInsights(data.metrics?.insights || []);
       } else {
-        fallbackInsights.push(`Excellent! Your savings rate of ${kpis.savingsRatio.toFixed(1)}% exceeds the recommended 15%.`);
         const fallbackInsights = [];
         
         // Calculate investment data for analysis using ALL transactions (not just filtered)
@@ -340,14 +339,63 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
       setInsights(['Unable to generate insights at this time. Please try again later.']);
     } finally {
       setLoadingInsights(false);
+    }
+  };
+
+  // Calculate category breakdown for P&L table
+  const calculateCategoryBreakdown = () => {
+    const breakdown: { [key: string]: { category: string; type: 'income' | 'expense'; months: { [key: string]: number } } } = {};
+    
+    // Get all months with data
+    const allMonths = Array.from(new Set(
+      transactions.map(t => format(t.date, 'yyyy-MM'))
+    )).sort().reverse();
+    
+    transactions.forEach(transaction => {
+      const monthKey = format(transaction.date, 'yyyy-MM');
+      const categoryKey = `${transaction.category}-${transaction.type}`;
+      
+      if (!breakdown[categoryKey]) {
+        breakdown[categoryKey] = {
+          category: transaction.category,
+          type: transaction.type,
+          months: {}
+        };
+      }
+      
+      if (!breakdown[categoryKey].months[monthKey]) {
+        breakdown[categoryKey].months[monthKey] = 0;
+      }
+      
+      breakdown[categoryKey].months[monthKey] += transaction.amount;
+    });
+    
+    return breakdown;
+  };
+
+  const categoryBreakdown = calculateCategoryBreakdown();
+
+  // Get months data for P&L table
+  const monthsData = Array.from(new Set(
+    transactions.map(t => format(t.date, 'yyyy-MM'))
+  )).sort().reverse().slice(0, 6).map(month => {
+    const monthDate = new Date(month + '-01');
+    const monthlyData = calculateMonthlyTotals(transactions, budgets, monthDate);
+    
+    return {
+      month,
+      ...monthlyData
+    };
   });
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Header with Export Button */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
-      if (kpis.savingsRatio < 15) {
-        fallbackInsights.push(`Your savings rate of ${kpis.savingsRatio.toFixed(1)}% is below the recommended 15%. Try to increase your savings by reducing discretionary spending.`);
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">Financial Dashboard</h2>
+            <p className="text-gray-600 mt-1">
               {viewMode === 'cumulative' ? 'Cumulative Overview' : `${format(selectedMonth, 'MMMM yyyy')} Overview`}
               {viewMode === 'monthly' && ' - Select month below to analyze'}
             </p>
