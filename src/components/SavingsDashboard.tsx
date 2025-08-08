@@ -1,4 +1,5 @@
 import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types';
 import { format, subMonths, startOfMonth } from 'date-fns';
 import {
@@ -118,22 +119,80 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
   };
 
   // Savings by subcategory (pie chart)
-  const savingsByCategory = savingsTransactions.reduce((acc, t) => {
-    acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
-    return acc;
-  }, {} as { [key: string]: number });
+  const [savingsByCategory, setSavingsByCategory] = useState<{ [key: string]: number }>({});
+  const [categorizingSavings, setCategorizingSavings] = useState(false);
+
+  // Categorize savings using OpenAI
+  useEffect(() => {
+    if (savingsTransactions.length > 0) {
+      categorizeSavingsWithAI();
+    }
+  }, [savingsTransactions]);
+
+  const categorizeSavingsWithAI = async () => {
+    setCategorizingSavings(true);
+    
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactions: savingsTransactions.map(t => ({
+            id: t.id,
+            date: t.date.toISOString().split('T')[0],
+            description: t.description || t.subcategory,
+            amount: t.amount,
+            type: t.type
+          })),
+          action: 'categorize-savings'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Savings categorization failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const categorizedSavings = data.categorizedSavings || {};
+      
+      // Group by AI-determined categories
+      const groupedSavings = savingsTransactions.reduce((acc, t, index) => {
+        const aiCategory = categorizedSavings[index]?.category || t.subcategory;
+        acc[aiCategory] = (acc[aiCategory] || 0) + t.amount;
+        return acc;
+      }, {} as { [key: string]: number });
+      
+      setSavingsByCategory(groupedSavings);
+    } catch (error) {
+      console.error('Error categorizing savings:', error);
+      // Fallback to original subcategory grouping
+      const fallbackSavings = savingsTransactions.reduce((acc, t) => {
+        acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
+        return acc;
+      }, {} as { [key: string]: number });
+      setSavingsByCategory(fallbackSavings);
+    } finally {
+      setCategorizingSavings(false);
+    }
+  };
 
   const savingsPieData = {
     labels: Object.keys(savingsByCategory),
     datasets: [{
       data: Object.values(savingsByCategory),
       backgroundColor: [
-        '#059669', // SIPs
-        '#10B981', // Fixed Deposits  
-        '#34D399', // Recurring Deposits
-        '#6EE7B7', // Emergency Fund
-        '#A7F3D0', // Investment Savings
-        '#D1FAE5', // Retirement Savings
+        '#059669', // SIP
+        '#10B981', // Mutual Fund  
+        '#34D399', // Stocks
+        '#6EE7B7', // FD
+        '#A7F3D0', // RD
+        '#D1FAE5', // AIF
+        '#86EFAC', // Others
       ],
       borderWidth: 2,
       borderColor: '#ffffff',
@@ -318,7 +377,15 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
         {/* Savings by Type Pie Chart */}
         <div className="bg-white p-6 rounded-xl shadow-lg">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Savings by Type</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Savings by Type</h3>
+            {categorizingSavings && (
+              <div className="flex items-center space-x-2 text-purple-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                <span className="text-xs">AI Categorizing...</span>
+              </div>
+            )}
+          </div>
           <div className="h-64">
             {Object.keys(savingsByCategory).length > 0 ? (
               <Pie 
@@ -328,12 +395,19 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
                   maintainAspectRatio: false,
                   plugins: {
                     legend: { position: 'right' },
+                    tooltip: {
+                      callbacks: {
+                        label: function(context) {
+                          return `${context.label}: ${formatCurrency(context.parsed)}`;
+                        }
+                      }
+                    }
                   }
                 }}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-500">
-                No savings data available
+                {categorizingSavings ? 'Categorizing savings...' : 'No savings data available'}
               </div>
             )}
           </div>
@@ -343,28 +417,34 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
         <div className="bg-white p-6 rounded-xl shadow-lg lg:col-span-2">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Monthly Savings Rate</h3>
           <div className="h-64">
-            <Bar 
-              data={savingsRateData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { display: false },
-                },
-                scales: {
-                  y: { 
-                    beginAtZero: false,
-                    min: Math.max(0, Math.min(...monthlySavingsData.map(d => d.savingsRate)) - 2),
-                    max: Math.max(20, Math.max(...monthlySavingsData.map(d => d.savingsRate)) + 2),
-                    ticks: {
-                      callback: function(value) {
-                        return value + '%';
+            {monthlySavingsData.length > 0 ? (
+              <Bar 
+                data={savingsRateData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { display: false },
+                  },
+                  scales: {
+                    y: { 
+                      beginAtZero: false,
+                      min: Math.max(0, Math.min(...monthlySavingsData.map(d => d.savingsRate)) - 2),
+                      max: Math.max(20, Math.max(...monthlySavingsData.map(d => d.savingsRate)) + 2),
+                      ticks: {
+                        callback: function(value) {
+                          return value + '%';
+                        }
                       }
                     }
                   }
-                }
-              }}
-            />
+                }}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No monthly savings data available
+              </div>
+            )}
           </div>
         </div>
       </div>

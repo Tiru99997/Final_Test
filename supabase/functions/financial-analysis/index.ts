@@ -18,7 +18,7 @@ interface Transaction {
 
 interface CategorizationRequest {
   transactions: Transaction[]
-  action: 'categorize' | 'analyze'
+  action: 'categorize' | 'analyze' | 'categorize-savings'
 }
 
 interface FinancialMetrics {
@@ -225,6 +225,97 @@ Only return the JSON array, no other text.`
   }
 
   return categorizedTransactions
+}
+
+async function categorizeSavingsTransactions(transactions: Transaction[], apiKey: string): Promise<any[]> {
+  if (!apiKey) {
+    // Fallback categorization for savings
+    return transactions.map(t => {
+      const description = t.description?.toLowerCase() || '';
+      
+      if (description.includes('sip') || description.includes('systematic')) {
+        return { category: 'SIP' };
+      } else if (description.includes('mutual fund') || description.includes('mf')) {
+        return { category: 'Mutual Fund' };
+      } else if (description.includes('stock') || description.includes('equity')) {
+        return { category: 'Stocks' };
+      } else if (description.includes('fd') || description.includes('fixed deposit')) {
+        return { category: 'FD' };
+      } else if (description.includes('rd') || description.includes('recurring deposit')) {
+        return { category: 'RD' };
+      } else if (description.includes('aif') || description.includes('alternative investment')) {
+        return { category: 'AIF' };
+      } else {
+        return { category: 'Other Savings' };
+      }
+    });
+  }
+
+  const prompt = `
+Categorize the following savings/investment transactions into these specific categories:
+- SIP (Systematic Investment Plan)
+- Mutual Fund (Direct mutual fund investments)
+- Stocks (Direct stock/equity investments)
+- FD (Fixed Deposits)
+- RD (Recurring Deposits)  
+- AIF (Alternative Investment Funds)
+- Other Savings (Any other savings not fitting above categories)
+
+Transactions to categorize:
+${transactions.map(t => `- ${t.description} ($${t.amount})`).join('\n')}
+
+Rules:
+1. SIP for systematic investment plans, monthly SIPs
+2. Mutual Fund for direct mutual fund investments (not SIPs)
+3. Stocks for direct stock purchases, equity investments
+4. FD for fixed deposits, term deposits
+5. RD for recurring deposits
+6. AIF for alternative investment funds, hedge funds, etc.
+7. Other Savings for any savings not fitting the above
+
+Return a JSON array with the same order, each containing:
+{
+  "category": "category_name"
+}
+
+Only return the JSON array, no other text.`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a financial categorization expert for savings and investments. Always respond with valid JSON only.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 500
+      })
+    });
+
+    if (!response.ok) {
+      console.error('OpenAI API error for savings categorization:', response.status);
+      return transactions.map(() => ({ category: 'Other Savings' }));
+    }
+
+    const data = await response.json();
+    return JSON.parse(data.choices[0].message.content);
+
+  } catch (error) {
+    console.error('Error categorizing savings:', error);
+    return transactions.map(() => ({ category: 'Other Savings' }));
+  }
 }
 
 function categorizeTransactionsFallback(transactions: Transaction[]): Transaction[] {
