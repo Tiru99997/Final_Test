@@ -36,16 +36,15 @@ interface SavingsDashboardProps {
 const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => {
   const currentDate = new Date();
   
-  // Calculate total savings as income - expenses
+  // Calculate savings from transactions categorized as 'Savings'
+  const savingsTransactions = transactions.filter(t => 
+    t.type === 'expense' && t.category === 'Savings'
+  );
+  
+  // Calculate total income for savings rate calculation
   const totalIncome = transactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
-  
-  const totalExpenses = transactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
-  
-  const totalSavings = totalIncome - totalExpenses;
   
   // Monthly savings data for last 12 months
   const last12Months = Array.from({ length: 12 }, (_, i) => {
@@ -63,25 +62,41 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       t.date >= monthStart && t.date < monthEnd
     );
 
-    const income = monthlyTransactions
+    const monthlyIncome = monthlyTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const expenses = monthlyTransactions
-      .filter(t => t.type === 'expense')
+    const monthlySavings = monthlyTransactions
+      .filter(t => t.type === 'expense' && t.category === 'Savings')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const savings = income - expenses;
+    const savingsRate = monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0;
 
     return {
       month: format(month, 'MMM yyyy'),
       shortMonth: format(month, 'MMM'),
-      income,
-      expenses,
-      savings,
-      savingsRate: calculateSavingsRate(income, expenses - savings, savings)
+      income: monthlyIncome,
+      savings: monthlySavings,
+      savingsRate
     };
   });
+
+  // Calculate cumulative savings (YTD)
+  const totalSavings = savingsTransactions.reduce((sum, t) => sum + t.amount, 0);
+  
+  // Calculate average monthly savings
+  const monthsWithSavings = monthlySavingsData.filter(data => data.savings > 0);
+  const averageMonthlySavings = monthsWithSavings.length > 0 
+    ? monthsWithSavings.reduce((sum, data) => sum + data.savings, 0) / monthsWithSavings.length
+    : 0;
+  
+  // Calculate overall savings rate
+  const overallSavingsRate = totalIncome > 0 ? (totalSavings / totalIncome) * 100 : 0;
+  
+  // Calculate shortfall in savings (15% target)
+  const savingsTarget = 0.15; // 15%
+  const targetSavings = totalIncome * savingsTarget;
+  const savingsShortfall = Math.max(0, targetSavings - totalSavings);
 
   // Cumulative savings line chart
   let cumulativeSavings = 0;
@@ -103,10 +118,8 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
   };
 
   // Savings by subcategory (pie chart)
-  const savingsTransactions = transactions.filter(t => t.type === 'income');
-  
   const savingsByCategory = savingsTransactions.reduce((acc, t) => {
-    acc[t.category] = (acc[t.category] || 0) + t.amount;
+    acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
     return acc;
   }, {} as { [key: string]: number });
 
@@ -115,10 +128,12 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
     datasets: [{
       data: Object.values(savingsByCategory),
       backgroundColor: [
-        '#059669', // Fixed Income
-        '#10B981', // Variable Income  
-        '#34D399', // Other Income
-        '#6EE7B7', // Additional categories
+        '#059669', // SIPs
+        '#10B981', // Fixed Deposits  
+        '#34D399', // Recurring Deposits
+        '#6EE7B7', // Emergency Fund
+        '#A7F3D0', // Investment Savings
+        '#D1FAE5', // Retirement Savings
       ],
       borderWidth: 2,
       borderColor: '#ffffff',
@@ -141,33 +156,13 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
   // Calculate current month metrics
   const currentMonthData = monthlySavingsData[monthlySavingsData.length - 1] || {
     income: 0,
-    expenses: 0,
     savings: 0,
     savingsRate: 0
   };
 
-  // Mock savings targets (in real app, these would be user-defined)
-  const savingsTargets = {
-    monthly: 2000,
-    annual: 24000,
-    retirement: 500000,
-  };
-
-  // Calculate progress towards goals
-  const monthlyProgress = (currentMonthData.savings / savingsTargets.monthly) * 100;
-  const annualProgress = (totalSavings / savingsTargets.annual) * 100;
-
-  // Calculate net worth (total savings accumulated over time)
-  const calculateNetWorth = () => {
-    const allSavingsTransactions = transactions.filter(t => 
-      t.type === 'expense' && 
-      (t.category === 'Savings' || t.category === 'Investments') &&
-      t.date <= new Date()
-    );
-    return allSavingsTransactions.reduce((sum, t) => sum + t.amount, 0);
-  };
-
-  const netWorth = calculateNetWorth();
+  // Calculate monthly savings target (15% of current month income)
+  const monthlyTarget = currentMonthData.income * savingsTarget;
+  const monthlyProgress = monthlyTarget > 0 ? (currentMonthData.savings / monthlyTarget) * 100 : 0;
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -176,7 +171,7 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
         <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Savings</p>
+              <p className="text-sm font-medium text-gray-600">Total Savings (YTD)</p>
               <p className="text-2xl font-bold text-green-600">
                 {formatCurrency(totalSavings)}
               </p>
@@ -188,9 +183,9 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
         <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Monthly Savings</p>
+              <p className="text-sm font-medium text-gray-600">Avg Monthly Savings</p>
               <p className="text-2xl font-bold text-blue-600">
-                {formatCurrency(currentMonthData.savings)}
+                {formatCurrency(averageMonthlySavings)}
               </p>
             </div>
             <TrendingUp className="h-8 w-8 text-blue-500" />
@@ -202,35 +197,47 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
             <div>
               <p className="text-sm font-medium text-gray-600">Savings Rate</p>
               <p className="text-2xl font-bold text-purple-600">
-                {currentMonthData.savingsRate.toFixed(1)}%
+                {overallSavingsRate.toFixed(1)}%
+              </p>
+              <p className="text-xs text-purple-500">
+                Target: 15%
               </p>
             </div>
             <Percent className="h-8 w-8 text-purple-500" />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-orange-500">
+        <div className={`bg-white p-6 rounded-xl shadow-lg border-l-4 ${
+          savingsShortfall > 0 ? 'border-red-500' : 'border-green-500'
+        }`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Annual Progress</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {annualProgress.toFixed(1)}%
+              <p className="text-sm font-medium text-gray-600">Savings Shortfall</p>
+              <p className={`text-2xl font-bold ${
+                savingsShortfall > 0 ? 'text-red-600' : 'text-green-600'
+              }`}>
+                {formatCurrency(savingsShortfall)}
+              </p>
+              <p className="text-xs text-gray-500">
+                Target: {formatCurrency(targetSavings)}
               </p>
             </div>
-            <Target className="h-8 w-8 text-orange-500" />
+            <Target className={`h-8 w-8 ${
+              savingsShortfall > 0 ? 'text-red-500' : 'text-green-500'
+            }`} />
           </div>
         </div>
       </div>
 
       {/* Savings Targets Progress */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Savings Goals Progress</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-6">Monthly Savings Goal Progress</h3>
         <div className="space-y-4">
           <div>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">Monthly Goal</span>
+              <span className="text-sm font-medium text-gray-600">Current Month Goal (15% of Income)</span>
               <span className="text-sm text-gray-800">
-                {formatCurrency(currentMonthData.savings)} / {formatCurrency(savingsTargets.monthly)}
+                {formatCurrency(currentMonthData.savings)} / {formatCurrency(monthlyTarget)}
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
@@ -244,18 +251,22 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
           <div>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">Annual Goal</span>
+              <span className="text-sm font-medium text-gray-600">Overall Savings Rate Goal</span>
               <span className="text-sm text-gray-800">
-                {formatCurrency(totalSavings)} / {formatCurrency(savingsTargets.annual)}
+                {overallSavingsRate.toFixed(1)}% / 15%
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
               <div 
-                className="bg-blue-500 h-3 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(annualProgress, 100)}%` }}
+                className={`h-3 rounded-full transition-all duration-300 ${
+                  overallSavingsRate >= 15 ? 'bg-green-500' : 'bg-blue-500'
+                }`}
+                style={{ width: `${Math.min((overallSavingsRate / 15) * 100, 100)}%` }}
               ></div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">{annualProgress.toFixed(1)}% complete</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {((overallSavingsRate / 15) * 100).toFixed(1)}% of target achieved
+            </p>
           </div>
         </div>
       </div>
@@ -289,9 +300,9 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
           </div>
         </div>
 
-        {/* Savings by Account Pie Chart */}
+        {/* Savings by Type Pie Chart */}
         <div className="bg-white p-6 rounded-xl shadow-lg">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Income Sources</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Savings by Type</h3>
           <div className="h-64">
             {Object.keys(savingsByCategory).length > 0 ? (
               <Pie 
@@ -306,7 +317,7 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
               />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-500">
-                No income data available
+                No savings data available
               </div>
             )}
           </div>
@@ -343,32 +354,32 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
       {/* Savings Breakdown Table */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Income Sources Breakdown</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Savings Breakdown</h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b">
-                <th className="text-left py-3 px-4 font-medium text-gray-600">Income Source</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-600">Savings Type</th>
                 <th className="text-right py-3 px-4 font-medium text-gray-600">Amount</th>
                 <th className="text-right py-3 px-4 font-medium text-gray-600">Percentage</th>
               </tr>
             </thead>
             <tbody>
-              {Object.entries(savingsByCategory).map(([source, amount]) => (
-                <tr key={source} className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-4 text-gray-800">{source}</td>
+              {Object.entries(savingsByCategory).map(([type, amount]) => (
+                <tr key={type} className="border-b hover:bg-gray-50">
+                  <td className="py-3 px-4 text-gray-800">{type}</td>
                   <td className="py-3 px-4 text-right font-medium text-gray-800">
                     {formatCurrency(amount)}
                   </td>
                   <td className="py-3 px-4 text-right text-gray-600">
-                    {((amount / totalIncome) * 100).toFixed(1)}%
+                    {totalSavings > 0 ? ((amount / totalSavings) * 100).toFixed(1) : 0}%
                   </td>
                 </tr>
               ))}
               {Object.keys(savingsByCategory).length === 0 && (
                 <tr>
                   <td colSpan={3} className="py-8 text-center text-gray-500">
-                    No income data available
+                    No savings data available
                   </td>
                 </tr>
               )}
