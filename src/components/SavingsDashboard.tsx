@@ -157,18 +157,27 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
   const categorizeSavingsWithAI = async () => {
     setCategorizingSavings(true);
     
-    // Check if Supabase configuration is available
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.warn('Supabase configuration not available, using fallback categorization');
-      useFallbackCategorization();
-      return;
-    }
-    
     try {
+      // Check if Supabase configuration is available
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey || !supabaseUrl.startsWith('http')) {
+        console.warn('Supabase configuration not available or invalid, using fallback categorization');
+        useFallbackCategorization();
+        return;
+      }
+      
       const apiUrl = `${supabaseUrl}/functions/v1/financial-analysis`;
+      
+      // Validate URL format before making request
+      try {
+        new URL(apiUrl);
+      } catch (urlError) {
+        console.error('Invalid Supabase URL format:', apiUrl);
+        useFallbackCategorization();
+        return;
+      }
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -189,7 +198,9 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       });
 
       if (!response.ok) {
-        throw new Error(`Savings categorization failed: ${response.status}`);
+        console.error(`Savings categorization failed: ${response.status}`);
+        useFallbackCategorization();
+        return;
       }
 
       const data = await response.json();
@@ -205,7 +216,6 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       setSavingsByCategory(groupedSavings);
     } catch (error) {
       console.error('Error categorizing savings:', error);
-      // Use fallback categorization on any error
       useFallbackCategorization();
     } finally {
       setCategorizingSavings(false);
@@ -220,16 +230,18 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       // Enhanced categorization based on keywords
       if (description.includes('sip') || description.includes('systematic') || subcategory.includes('sip')) {
         acc['SIP'] = (acc['SIP'] || 0) + t.amount;
-      } else if (description.includes('mutual fund') || description.includes('mf ') || description.includes(' mf') || subcategory.includes('mutual')) {
+      } else if (description.includes('mutual fund') || description.includes('mf ') || description.includes(' mf') || description.includes('mutual') || description.includes('fund') || subcategory.includes('mutual')) {
         acc['Mutual Fund'] = (acc['Mutual Fund'] || 0) + t.amount;
       } else if (description.includes('stock') || description.includes('equity') || description.includes('shares') || subcategory.includes('stock')) {
         acc['Stocks'] = (acc['Stocks'] || 0) + t.amount;
-      } else if (description.includes('fd ') || description.includes(' fd') || description.includes('fixed deposit') || subcategory.includes('fd')) {
+      } else if (description.includes('fd ') || description.includes(' fd') || description.includes('fixed deposit') || description.includes('fd') || description.includes('deposit') || subcategory.includes('fd')) {
         acc['Fixed Deposits'] = (acc['Fixed Deposits'] || 0) + t.amount;
-      } else if (description.includes('rd ') || description.includes(' rd') || description.includes('recurring deposit') || subcategory.includes('rd')) {
+      } else if (description.includes('rd ') || description.includes(' rd') || description.includes('recurring deposit') || description.includes('recurring') || subcategory.includes('rd')) {
         acc['Recurring Deposits'] = (acc['Recurring Deposits'] || 0) + t.amount;
       } else if (description.includes('aif') || description.includes('alternative investment') || subcategory.includes('aif')) {
         acc['AIF'] = (acc['AIF'] || 0) + t.amount;
+      } else if (description.includes('investment') || description.includes('invest') || description.includes('saving') || description.includes('ppf') || description.includes('nsc') || description.includes('elss')) {
+        acc['Investment Savings'] = (acc['Investment Savings'] || 0) + t.amount;
       } else {
         acc['Other Savings'] = (acc['Other Savings'] || 0) + t.amount;
       }
@@ -259,7 +271,10 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
   // Monthly savings rate bar chart
   const savingsRateData = {
-    labels: monthlySavingsData.map(data => data.shortMonth),
+    labels: monthlySavingsData.map(data => {
+      const date = new Date(data.month);
+      return format(date, "MMM''yy");
+    }),
     datasets: [{
       label: 'Savings Rate (%)',
       data: monthlySavingsData.map(data => data.savingsRate),
@@ -271,11 +286,91 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
   };
 
   // Calculate current month metrics
-  const currentMonthData = monthlySavingsData[monthlySavingsData.length - 1] || {
-    income: 0,
-    savings: 0,
-    savingsRate: 0
+  const currentMonthStart = startOfMonth(currentDate);
+  const currentMonthEnd = new Date(currentMonthStart);
+  currentMonthEnd.setMonth(currentMonthEnd.getMonth() + 1);
+
+  const currentMonthTransactions = transactions.filter(t => 
+    t.date >= currentMonthStart && t.date < currentMonthEnd
+  );
+
+  const currentMonthIncome = currentMonthTransactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const currentMonthSavings = currentMonthTransactions
+    .filter(t => {
+      if (t.type !== 'expense') return false;
+      
+      // Check if it's in the Savings category
+      if (t.category === 'Savings') return true;
+      
+      // Check if it's an investment-related transaction
+      const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+      const description = (t.description || '').toLowerCase();
+      const subcategory = (t.subcategory || '').toLowerCase();
+      
+      return investmentKeywords.some(keyword => 
+        description.includes(keyword) || subcategory.includes(keyword)
+      );
+    })
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const currentMonthSavingsRate = currentMonthIncome > 0 ? (currentMonthSavings / currentMonthIncome) * 100 : 0;
+
+  // Find the most recent month with data (current month or last month)
+  const getMostRecentMonthData = () => {
+    console.log('Current month data:', { currentMonthIncome, currentMonthSavings, currentMonthSavingsRate });
+    console.log('Monthly savings data:', monthlySavingsData);
+    
+    // Check if current month has any income or savings data
+    if (currentMonthIncome > 0 || currentMonthSavings > 0) {
+      return {
+        income: currentMonthIncome,
+        savings: currentMonthSavings,
+        savingsRate: currentMonthSavingsRate,
+        monthName: format(currentDate, 'MMMM yyyy'),
+        isCurrentMonth: true
+      };
+    }
+    
+    // If current month has no data, find the most recent month with data from monthlySavingsData
+    // Create a copy and reverse to get most recent first
+    const reversedMonthlyData = [...monthlySavingsData].reverse();
+    console.log('Reversed monthly data:', reversedMonthlyData);
+    
+    const monthsWithData = reversedMonthlyData.filter(data => {
+      const hasData = data.income > 0 || data.savings > 0;
+      console.log(`Month ${data.month}: income=${data.income}, savings=${data.savings}, hasData=${hasData}`);
+      return hasData;
+    });
+    
+    console.log('Months with data:', monthsWithData);
+    
+    if (monthsWithData.length > 0) {
+      const recentMonth = monthsWithData[0];
+      console.log('Selected recent month:', recentMonth);
+      return {
+        income: recentMonth.income,
+        savings: recentMonth.savings,
+        savingsRate: recentMonth.savingsRate,
+        monthName: recentMonth.month,
+        isCurrentMonth: false
+      };
+    }
+    
+    console.log('No data found, using fallback');
+    // Fallback if no data available
+    return {
+      income: 0,
+      savings: 0,
+      savingsRate: 0,
+      monthName: format(currentDate, 'MMMM yyyy'),
+      isCurrentMonth: true
+    };
   };
+
+  const currentMonthData = getMostRecentMonthData();
 
   // Calculate monthly savings target (15% of current month income)
   const monthlyTarget = currentMonthData.income * savingsTarget;
@@ -348,58 +443,44 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
       {/* Savings Targets Progress */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Savings Goal Analysis</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium text-gray-700 mb-3">Current Month Performance</h4>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Monthly Income:</span>
-                <span className="text-sm font-medium">{formatCurrency(currentMonthData.income)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Monthly Savings:</span>
-                <span className="text-sm font-medium">{formatCurrency(currentMonthData.savings)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Target (15%):</span>
-                <span className="text-sm font-medium">{formatCurrency(monthlyTarget)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="text-sm font-medium text-gray-700">Savings Rate:</span>
-                <span className={`text-sm font-bold ${
-                  currentMonthData.savingsRate >= 15 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {currentMonthData.savingsRate.toFixed(1)}%
-                </span>
-              </div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-6">Savings Goals Progress</h3>
+        <div className="space-y-6">
+          {/* Monthly Goal */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-600">Monthly Savings Goal (15%)</span>
+              <span className="text-sm text-gray-800">
+                Achievement: {overallSavingsRate.toFixed(1)}% / Target: 15%
+              </span>
             </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-purple-500 h-3 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min((overallSavingsRate / 15) * 100, 100)}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {((overallSavingsRate / 15) * 100).toFixed(1)}% of target achieved
+            </p>
           </div>
-          
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium text-gray-700 mb-3">Overall Performance</h4>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total Income:</span>
-                <span className="text-sm font-medium">{formatCurrency(totalIncome)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total Savings:</span>
-                <span className="text-sm font-medium">{formatCurrency(totalSavings)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Target (15%):</span>
-                <span className="text-sm font-medium">{formatCurrency(targetSavings)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="text-sm font-medium text-gray-700">Overall Rate:</span>
-                <span className={`text-sm font-bold ${
-                  overallSavingsRate >= 15 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {overallSavingsRate.toFixed(1)}%
-                </span>
-              </div>
+
+          {/* Annual Performance */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-600">Annual Savings Performance</span>
+              <span className="text-sm text-gray-800">
+                {formatCurrency(totalSavings)} / {formatCurrency(targetSavings)}
+              </span>
             </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-green-500 h-3 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min((totalSavings / targetSavings) * 100, 100)}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {((totalSavings / targetSavings) * 100).toFixed(1)}% of annual target achieved
+            </p>
           </div>
         </div>
       </div>
@@ -425,6 +506,12 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
                       callback: function(value) {
                         return formatCurrency(value as number);
                       }
+                    }
+                  },
+                  x: {
+                    ticks: {
+                      maxRotation: 45,
+                      minRotation: 45
                     }
                   }
                 }

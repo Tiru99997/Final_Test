@@ -25,7 +25,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
   const [formData, setFormData] = useState({
     expenseDetail: '',
     amount: '',
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toLocaleDateString('en-CA'), // This gives YYYY-MM-DD format in local timezone
   });
   
   const [customCategory, setCustomCategory] = useState('');
@@ -51,7 +51,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
     try {
       const tempTransaction = {
         id: generateId(),
-        date: formData.date,
+        date: new Date(formData.date + 'T00:00:00'), // Create date object from YYYY-MM-DD
         description: formData.expenseDetail,
         amount: parseFloat(formData.amount),
         type: 'expense' as const
@@ -67,7 +67,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
         setFormData({
           expenseDetail: '',
           amount: '',
-          date: new Date().toISOString().split('T')[0],
+          date: new Date().toLocaleDateString('en-CA'),
         });
       }
     } catch (error) {
@@ -300,7 +300,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
         <div className="flex flex-wrap gap-4">
           <label className="flex items-center space-x-2 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg cursor-pointer transition-colors">
             <Upload className="h-5 w-5 text-blue-600" />
-            <span className="text-blue-600 font-medium">Import CSV</span>
+            <span className="text-blue-600 font-medium">Upload File</span>
             <input
               type="file"
               accept=".csv"
@@ -314,15 +314,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
             className="flex items-center space-x-2 bg-green-50 hover:bg-green-100 px-4 py-2 rounded-lg transition-colors"
           >
             <Download className="h-5 w-5 text-green-600" />
-            <span className="text-green-600 font-medium">Export CSV</span>
-          </button>
-          
-          <button
-            onClick={handleLoadSampleData}
-            className="flex items-center space-x-2 bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-lg transition-colors"
-          >
-            <Plus className="h-5 w-5 text-purple-600" />
-            <span className="text-purple-600 font-medium">Load Sample Data</span>
+            <span className="text-green-600 font-medium">Download Expense Template</span>
           </button>
         </div>
         

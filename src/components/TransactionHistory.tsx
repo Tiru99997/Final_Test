@@ -183,6 +183,22 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* Clear Filters Button */}
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedType('all');
+              setSelectedCategory('all');
+              setDateFrom('');
+              setDateTo('');
+              setSortBy('date');
+              setSortOrder('desc');
+            }}
+            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-medium"
+          >
+            Clear Filters
+          </button>
+
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -360,6 +376,19 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                   onChange={(e) => setEditingTransaction({
                     ...editingTransaction,
                     amount: parseFloat(e.target.value) || 0
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={editingTransaction.date.toLocaleDateString('en-CA')}
+                  onChange={(e) => setEditingTransaction({
+                    ...editingTransaction,
+                    date: new Date(e.target.value + 'T00:00:00')
                   })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                 />
