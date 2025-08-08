@@ -36,10 +36,16 @@ interface SavingsDashboardProps {
 const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => {
   const currentDate = new Date();
   
-  // Calculate total savings
-  const totalSavings = transactions
-    .filter(t => t.type === 'expense' && t.category === 'Savings')
+  // Calculate total savings as income - expenses
+  const totalIncome = transactions
+    .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
+  
+  const totalExpenses = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const totalSavings = totalIncome - totalExpenses;
   
   // Monthly savings data for last 12 months
   const last12Months = Array.from({ length: 12 }, (_, i) => {
@@ -65,9 +71,7 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const savings = monthlyTransactions
-      .filter(t => t.type === 'expense' && (t.category === 'Savings' || t.category === 'Investments'))
-      .reduce((sum, t) => sum + t.amount, 0);
+    const savings = income - expenses;
 
     return {
       month: format(month, 'MMM yyyy'),
@@ -99,23 +103,21 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
   };
 
   // Savings by subcategory (pie chart)
-  const savingsTransactions = transactions.filter(t => 
-    t.type === 'expense' && (t.category === 'Savings' || t.category === 'Investments')
-  );
+  const savingsTransactions = transactions.filter(t => t.type === 'income');
   
-  const savingsBySubcategory = savingsTransactions.reduce((acc, t) => {
-    acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
+  const savingsByCategory = savingsTransactions.reduce((acc, t) => {
+    acc[t.category] = (acc[t.category] || 0) + t.amount;
     return acc;
   }, {} as { [key: string]: number });
 
   const savingsPieData = {
-    labels: Object.keys(savingsBySubcategory),
+    labels: Object.keys(savingsByCategory),
     datasets: [{
-      data: Object.values(savingsBySubcategory),
+      data: Object.values(savingsByCategory),
       backgroundColor: [
-        '#059669', // Long term saving
-        '#10B981', // Short term saving  
-        '#34D399', // Investments
+        '#059669', // Fixed Income
+        '#10B981', // Variable Income  
+        '#34D399', // Other Income
         '#6EE7B7', // Additional categories
       ],
       borderWidth: 2,
@@ -289,9 +291,9 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
         {/* Savings by Account Pie Chart */}
         <div className="bg-white p-6 rounded-xl shadow-lg">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Savings by Account</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Income Sources</h3>
           <div className="h-64">
-            {Object.keys(savingsBySubcategory).length > 0 ? (
+            {Object.keys(savingsByCategory).length > 0 ? (
               <Pie 
                 data={savingsPieData}
                 options={{
@@ -304,7 +306,7 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
               />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-500">
-                No savings data available
+                No income data available
               </div>
             )}
           </div>
@@ -341,32 +343,32 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
       {/* Savings Breakdown Table */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Savings Account Breakdown</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Income Sources Breakdown</h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b">
-                <th className="text-left py-3 px-4 font-medium text-gray-600">Account Type</th>
-                <th className="text-right py-3 px-4 font-medium text-gray-600">Amount Saved</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-600">Income Source</th>
+                <th className="text-right py-3 px-4 font-medium text-gray-600">Amount</th>
                 <th className="text-right py-3 px-4 font-medium text-gray-600">Percentage</th>
               </tr>
             </thead>
             <tbody>
-              {Object.entries(savingsBySubcategory).map(([account, amount]) => (
-                <tr key={account} className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-4 text-gray-800">{account}</td>
+              {Object.entries(savingsByCategory).map(([source, amount]) => (
+                <tr key={source} className="border-b hover:bg-gray-50">
+                  <td className="py-3 px-4 text-gray-800">{source}</td>
                   <td className="py-3 px-4 text-right font-medium text-gray-800">
                     {formatCurrency(amount)}
                   </td>
                   <td className="py-3 px-4 text-right text-gray-600">
-                    {((amount / totalSavings) * 100).toFixed(1)}%
+                    {((amount / totalIncome) * 100).toFixed(1)}%
                   </td>
                 </tr>
               ))}
-              {Object.keys(savingsBySubcategory).length === 0 && (
+              {Object.keys(savingsByCategory).length === 0 && (
                 <tr>
                   <td colSpan={3} className="py-8 text-center text-gray-500">
-                    No savings data available
+                    No income data available
                   </td>
                 </tr>
               )}
