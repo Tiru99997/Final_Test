@@ -430,7 +430,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
               type="range"
               min="0"
               max={monthOptions.length - 1}
-              value={safeSelectedMonthIndex}
+              value={selectedMonthIndex >= 0 ? selectedMonthIndex : 0}
               onChange={handleSliderChange}
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
             />
@@ -439,7 +439,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 <span 
                   key={index} 
                   className={`text-xs whitespace-nowrap ${
-                    index === safeSelectedMonthIndex ? 'text-green-600 font-medium' : 'text-gray-400'
+                    index === selectedMonthIndex ? 'text-green-600 font-medium' : 'text-gray-400'
                   }`}
                   style={{ 
                     left: `${(index / (monthOptions.length - 1)) * 100}%`,
