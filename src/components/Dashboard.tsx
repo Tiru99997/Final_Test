@@ -181,8 +181,33 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         borderWidth: 3,
       },
       {
-        label: 'Expenses',
-        data: monthlyChartData.map(data => data.expenses),
+        label: 'Expenses (excluding Savings)',
+        data: monthlyChartData.map(data => {
+          // Calculate expenses excluding savings for this month
+          const monthDate = new Date(data.month + ' 01, 2024');
+          const monthStart = startOfMonth(monthDate);
+          const monthEnd = endOfMonth(monthDate);
+          
+          const monthTransactions = transactions.filter(t => 
+            t.date >= monthStart && t.date <= monthEnd && t.type === 'expense'
+          );
+          
+          // Filter out savings transactions
+          const nonSavingsExpenses = monthTransactions.filter(t => {
+            if (t.category === 'Savings') return false;
+            
+            // Check if it's an investment-related transaction
+            const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+            const description = (t.description || '').toLowerCase();
+            const subcategory = (t.subcategory || '').toLowerCase();
+            
+            return !investmentKeywords.some(keyword => 
+              description.includes(keyword) || subcategory.includes(keyword)
+            );
+          });
+          
+          return nonSavingsExpenses.reduce((sum, t) => sum + t.amount, 0);
+        }),
         borderColor: '#EF4444',
         backgroundColor: 'rgba(239, 68, 68, 0.2)',
         fill: false,
