@@ -564,20 +564,3 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
 };
 
 export default Dashboard;
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            No transaction data available
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default Dashboard;
