@@ -582,23 +582,32 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 
                 {/* Expenses Section (Excluding Savings) */}
                 <tr className="border-b border-gray-200 bg-red-50">
-                  <td className="py-2 px-4 font-semibold text-red-800">EXPENSES (Excluding Savings)</td>
+                  <td className="py-2 px-4 font-semibold text-red-800">EXPENSES</td>
                   {monthsData.slice(0, 6).map((_, index) => (
                     <td key={index} className="py-2 px-3"></td>
                   ))}
                 </tr>
                 
-                {/* Expense Categories (Excluding Savings) */}
+                {/* Expense Categories */}
                 {Object.values(categoryBreakdown)
                   .filter(item => {
                     if (item.type !== 'expense') return false;
-                    // Exclude savings categories
+                    
+                    // Check if it's a savings/investment category
                     if (item.category === 'Savings') return false;
-                    // Exclude investment-related categories
-                    const investmentCategories = ['SIP', 'Mutual Fund', 'Stocks', 'FD', 'RD', 'AIF'];
-                    return !investmentCategories.some(keyword => 
-                      item.category.toLowerCase().includes(keyword.toLowerCase())
-                    );
+                    
+                    // Check if it's investment-related by examining transactions
+                    const categoryTransactions = transactions.filter(t => t.category === item.category);
+                    const isInvestmentCategory = categoryTransactions.some(t => {
+                      const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+                      const description = (t.description || '').toLowerCase();
+                      const subcategory = (t.subcategory || '').toLowerCase();
+                      return investmentKeywords.some(keyword => 
+                        description.includes(keyword) || subcategory.includes(keyword)
+                      );
+                    });
+                    
+                    return !isInvestmentCategory;
                   })
                   .sort((a, b) => {
                     const aTotal = Object.values(a.months).reduce((sum, val) => sum + val, 0);
@@ -617,11 +626,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                   ))}
                 
                 <tr className="border-b border-gray-200 bg-red-100">
-                  <td className="py-2 px-4 pl-4 font-semibold text-red-800">Total Expenses (Excluding Savings)</td>
+                  <td className="py-2 px-4 pl-4 font-semibold text-red-800">Total Expenses</td>
                   {monthsData.slice(0, 6).map((monthData, index) => (
                     <td key={index} className="py-2 px-3 text-center text-red-600 font-medium">
                       {(() => {
-                        const monthDate = new Date(monthData.month + ' 01, 2024');
+                        // Parse month string properly
+                        const [year, month] = monthData.month.split('-');
+                        const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
                         const monthStart = startOfMonth(monthDate);
                         const monthEnd = endOfMonth(monthDate);
                         
@@ -629,9 +640,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                           t.date >= monthStart && t.date <= monthEnd && t.type === 'expense'
                         );
                         
+                        // Filter out savings/investment transactions
                         const nonSavingsExpenses = monthTransactions.filter(t => {
+                          // Exclude Savings category
                           if (t.category === 'Savings') return false;
                           
+                          // Exclude investment-related transactions
                           const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
                           const description = (t.description || '').toLowerCase();
                           const subcategory = (t.subcategory || '').toLowerCase();
@@ -660,9 +674,18 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 {Object.values(categoryBreakdown)
                   .filter(item => item.type === 'expense' && (
                     item.category === 'Savings' || 
-                    ['SIP', 'Mutual Fund', 'Stocks', 'FD', 'RD', 'AIF'].some(keyword => 
-                      item.category.toLowerCase().includes(keyword.toLowerCase())
-                    )
+                    (() => {
+                      // Check if category has investment-related transactions
+                      const categoryTransactions = transactions.filter(t => t.category === item.category);
+                      return categoryTransactions.some(t => {
+                        const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+                        const description = (t.description || '').toLowerCase();
+                        const subcategory = (t.subcategory || '').toLowerCase();
+                        return investmentKeywords.some(keyword => 
+                          description.includes(keyword) || subcategory.includes(keyword)
+                        );
+                      });
+                    })()
                   ))
                   .sort((a, b) => {
                     const aTotal = Object.values(a.months).reduce((sum, val) => sum + val, 0);
@@ -683,14 +706,31 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 <tr className="border-b border-gray-200 bg-purple-100">
                   <td className="py-2 px-4 pl-4 font-semibold text-purple-800">Total Savings</td>
                   {monthsData.slice(0, 6).map((monthData, index) => {
-                    const savingsAmount = Object.values(categoryBreakdown)
-                      .filter(item => item.type === 'expense' && (
-                        item.category === 'Savings' || 
-                        ['SIP', 'Mutual Fund', 'Stocks', 'FD', 'RD', 'AIF'].some(keyword => 
-                          item.category.toLowerCase().includes(keyword.toLowerCase())
-                        )
-                      ))
-                      .reduce((sum, item) => sum + (item.months[monthData.month] || 0), 0);
+                    // Calculate savings amount for this month
+                    const [year, month] = monthData.month.split('-');
+                    const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+                    const monthStart = startOfMonth(monthDate);
+                    const monthEnd = endOfMonth(monthDate);
+                    
+                    const monthTransactions = transactions.filter(t => 
+                      t.date >= monthStart && t.date <= monthEnd && t.type === 'expense'
+                    );
+                    
+                    const savingsTransactions = monthTransactions.filter(t => {
+                      // Include Savings category
+                      if (t.category === 'Savings') return true;
+                      
+                      // Include investment-related transactions
+                      const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+                      const description = (t.description || '').toLowerCase();
+                      const subcategory = (t.subcategory || '').toLowerCase();
+                      
+                      return investmentKeywords.some(keyword => 
+                        description.includes(keyword) || subcategory.includes(keyword)
+                      );
+                    });
+                    
+                    const savingsAmount = savingsTransactions.reduce((sum, t) => sum + t.amount, 0);
                     return (
                       <td key={index} className="py-2 px-3 text-center text-purple-600 font-medium">
                         {savingsAmount > 0 ? formatCurrency(savingsAmount) : '-'}
@@ -703,7 +743,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 <tr className="border-t-2 border-gray-300 bg-blue-50">
                   <td className="py-3 px-4 font-bold text-blue-800">NET SURPLUS / (DEFICIT)</td>
                   {monthsData.slice(0, 6).map((monthData, index) => {
-                    const monthDate = new Date(monthData.month + ' 01, 2024');
+                    // Parse month string properly
+                    const [year, month] = monthData.month.split('-');
+                    const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
                     const monthStart = startOfMonth(monthDate);
                     const monthEnd = endOfMonth(monthDate);
                     
@@ -711,6 +753,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                       t.date >= monthStart && t.date <= monthEnd && t.type === 'expense'
                     );
                     
+                    // Filter out savings/investment transactions
                     const nonSavingsExpenses = monthTransactions.filter(t => {
                       if (t.category === 'Savings') return false;
                       
@@ -740,14 +783,31 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 <tr className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="py-2 px-4 pl-8 text-gray-700 font-medium">Savings Rate</td>
                   {monthsData.slice(0, 6).map((monthData, index) => {
-                    const savingsAmount = Object.values(categoryBreakdown)
-                      .filter(item => item.type === 'expense' && (
-                        item.category === 'Savings' || 
-                        ['SIP', 'Mutual Fund', 'Stocks', 'FD', 'RD', 'AIF'].some(keyword => 
-                          item.category.toLowerCase().includes(keyword.toLowerCase())
-                        )
-                      ))
-                      .reduce((sum, item) => sum + (item.months[monthData.month] || 0), 0);
+                    // Calculate savings amount for this month
+                    const [year, month] = monthData.month.split('-');
+                    const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+                    const monthStart = startOfMonth(monthDate);
+                    const monthEnd = endOfMonth(monthDate);
+                    
+                    const monthTransactions = transactions.filter(t => 
+                      t.date >= monthStart && t.date <= monthEnd && t.type === 'expense'
+                    );
+                    
+                    const savingsTransactions = monthTransactions.filter(t => {
+                      // Include Savings category
+                      if (t.category === 'Savings') return true;
+                      
+                      // Include investment-related transactions
+                      const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+                      const description = (t.description || '').toLowerCase();
+                      const subcategory = (t.subcategory || '').toLowerCase();
+                      
+                      return investmentKeywords.some(keyword => 
+                        description.includes(keyword) || subcategory.includes(keyword)
+                      );
+                    });
+                    
+                    const savingsAmount = savingsTransactions.reduce((sum, t) => sum + t.amount, 0);
                     const savingsRate = monthData.income > 0 ? (savingsAmount / monthData.income) * 100 : 0;
                     return (
                       <td key={index} className={`py-2 px-3 text-center font-medium ${
