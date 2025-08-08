@@ -273,63 +273,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
       } else {
         const fallbackInsights = [];
         
-        // Calculate investment data for analysis using ALL transactions (not just filtered)
-        const investmentTransactions = transactions.filter(t => {
-          if (t.type !== 'expense') return false;
-          if (t.category === 'Savings') return true;
-          const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
-          const description = (t.description || '').toLowerCase();
-          const subcategory = (t.subcategory || '').toLowerCase();
-          return investmentKeywords.some(keyword => 
-            description.includes(keyword) || subcategory.includes(keyword)
-          );
-        });
-        
-        const totalInvestments = investmentTransactions.reduce((sum, t) => sum + t.amount, 0);
-        
-        // Investment analysis
-        if (totalInvestments > 0) {
-          const investmentsByType = investmentTransactions.reduce((acc, t) => {
-            const description = (t.description || '').toLowerCase();
-            const subcategory = (t.subcategory || '').toLowerCase();
-            
-            if (description.includes('sip') || subcategory.includes('sip')) {
-              acc['SIP'] = (acc['SIP'] || 0) + t.amount;
-            } else if (description.includes('mutual fund') || description.includes('mf') || subcategory.includes('mutual')) {
-              acc['Mutual Fund'] = (acc['Mutual Fund'] || 0) + t.amount;
-            } else if (description.includes('stock') || description.includes('equity') || subcategory.includes('stock')) {
-              acc['Stocks'] = (acc['Stocks'] || 0) + t.amount;
-            } else if (description.includes('fd') || description.includes('fixed deposit') || subcategory.includes('fd')) {
-              acc['FD'] = (acc['FD'] || 0) + t.amount;
-            } else if (description.includes('aif') || subcategory.includes('aif')) {
-              acc['AIF'] = (acc['AIF'] || 0) + t.amount;
-            } else {
-              acc['Other'] = (acc['Other'] || 0) + t.amount;
-            }
-            return acc;
-          }, {} as { [key: string]: number });
-          
-          const equityAmount = (investmentsByType['SIP'] || 0) + (investmentsByType['Mutual Fund'] || 0) + (investmentsByType['Stocks'] || 0);
-          const debtAmount = (investmentsByType['FD'] || 0) + (investmentsByType['Other'] || 0);
-          const equityPercentage = totalInvestments > 0 ? (equityAmount / totalInvestments) * 100 : 0;
-          
-          fallbackInsights.push(`Great investment portfolio! You have ${formatCurrency(totalInvestments)} invested across ${Object.keys(investmentsByType).length} categories. Your equity allocation is ${equityPercentage.toFixed(1)}%. ${equityPercentage < 60 ? 'Consider increasing equity allocation for better long-term growth.' : 'Good equity allocation for long-term wealth building.'}`);
-        } else {
-          fallbackInsights.push("No investment data found. Start with SIPs in diversified equity mutual funds for long-term growth, and consider adding debt funds for stability. Aim for 70% equity and 30% debt allocation if you're under 40.");
-        }
-        
         if (kpis.debtToIncomeRatio > 36) {
           fallbackInsights.push(`Your debt-to-income ratio is ${kpis.debtToIncomeRatio.toFixed(1)}%, which is above the recommended 36%. Consider paying down high-interest debt first.`);
         } else {
           fallbackInsights.push(`Your debt-to-income ratio of ${kpis.debtToIncomeRatio.toFixed(1)}% is healthy and within recommended limits.`);
         }
         
-        // Use the same savings rate calculation as KPIs
-        const currentSavingsRate = kpis.savingsRatio;
-        if (currentSavingsRate < 15) {
-          fallbackInsights.push(`Your savings rate of ${currentSavingsRate.toFixed(1)}% is below the recommended 15%. Try to increase your savings by reducing discretionary spending.`);
+        if (kpis.savingsRatio < 15) {
+          fallbackInsights.push(`Your savings rate of ${kpis.savingsRatio.toFixed(1)}% is below the recommended 15%. Try to increase your savings by reducing discretionary spending.`);
         } else {
-          fallbackInsights.push(`Excellent! Your savings rate of ${currentSavingsRate.toFixed(1)}% exceeds the recommended 15%.`);
+          fallbackInsights.push(`Excellent! Your savings rate of ${kpis.savingsRatio.toFixed(1)}% exceeds the recommended 15%.`);
         }
         
         setInsights(fallbackInsights);
