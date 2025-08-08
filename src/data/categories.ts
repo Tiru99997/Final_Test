@@ -46,7 +46,7 @@ export const EXPENSE_CATEGORIES: CategoryStructure = {
     'Donations', 'Religious Contributions', 'NGO Support', 'Community Support'
   ],
   'Savings': [
-    'SIPs', 'Fixed Deposits', 'Recurring Deposits', 'Emergency Fund',
+    'SIPs', 'Mutual Fund', 'Stocks', 'FD', 'RD', 'AIF', 'Emergency Fund',
     'Investment Savings', 'Retirement Savings'
   ],
   'Other': [

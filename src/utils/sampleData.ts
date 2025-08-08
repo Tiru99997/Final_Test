@@ -235,6 +235,21 @@ const generateExpenseTransactions = (count: number, distributeAcrossMonths: bool
           if (subcategory === 'SIPs') {
             minAmount = 1000;
             maxAmount = 10000;
+          } else if (subcategory === 'Mutual Fund') {
+            minAmount = 5000;
+            maxAmount = 50000;
+          } else if (subcategory === 'Stocks') {
+            minAmount = 2000;
+            maxAmount = 25000;
+          } else if (subcategory === 'FD') {
+            minAmount = 10000;
+            maxAmount = 100000;
+          } else if (subcategory === 'RD') {
+            minAmount = 1000;
+            maxAmount = 5000;
+          } else if (subcategory === 'AIF') {
+            minAmount = 25000;
+            maxAmount = 200000;
           } else {
             minAmount = 500;
             maxAmount = 5000;

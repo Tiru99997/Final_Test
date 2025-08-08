@@ -140,21 +140,23 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       // Use fallback categorization
       const fallbackSavings = savingsTransactions.reduce((acc, t) => {
         const description = t.description?.toLowerCase() || '';
+        const subcategory = t.subcategory?.toLowerCase() || '';
         
-        if (description.includes('sip') || description.includes('systematic')) {
-          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
-        } else if (description.includes('mutual fund') || description.includes('mf')) {
-          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
-        } else if (description.includes('stock') || description.includes('equity')) {
-          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
-        } else if (description.includes('fd') || description.includes('fixed deposit')) {
-          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
-        } else if (description.includes('rd') || description.includes('recurring deposit')) {
-          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
-        } else if (description.includes('aif') || description.includes('alternative investment')) {
-          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
+        // Categorize based on description or subcategory
+        if (description.includes('sip') || description.includes('systematic') || subcategory.includes('sip')) {
+          acc['SIP'] = (acc['SIP'] || 0) + t.amount;
+        } else if (description.includes('mutual fund') || description.includes('mf') || subcategory.includes('mutual')) {
+          acc['Mutual Fund'] = (acc['Mutual Fund'] || 0) + t.amount;
+        } else if (description.includes('stock') || description.includes('equity') || description.includes('shares') || subcategory.includes('stock')) {
+          acc['Stocks'] = (acc['Stocks'] || 0) + t.amount;
+        } else if (description.includes('fd') || description.includes('fixed deposit') || subcategory.includes('fd')) {
+          acc['FD'] = (acc['FD'] || 0) + t.amount;
+        } else if (description.includes('rd') || description.includes('recurring deposit') || subcategory.includes('rd')) {
+          acc['RD'] = (acc['RD'] || 0) + t.amount;
+        } else if (description.includes('aif') || description.includes('alternative investment') || subcategory.includes('aif')) {
+          acc['AIF'] = (acc['AIF'] || 0) + t.amount;
         } else {
-          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
+          acc['Other Savings'] = (acc['Other Savings'] || 0) + t.amount;
         }
         return acc;
       }, {} as { [key: string]: number });
