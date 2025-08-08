@@ -449,15 +449,19 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-600">Monthly Savings Goal (15%)</span>
-              <span className="text-sm text-gray-800">Target: 15% of income</span>
+              <span className="text-sm text-gray-800">
+                Achievement: {overallSavingsRate.toFixed(1)}% / Target: 15%
+              </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
               <div 
                 className="bg-purple-500 h-3 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(overallSavingsRate, 100)}%` }}
+                style={{ width: `${Math.min((overallSavingsRate / 15) * 100, 100)}%` }}
               ></div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Current rate: {overallSavingsRate.toFixed(1)}%</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {((overallSavingsRate / 15) * 100).toFixed(1)}% of target achieved
+            </p>
           </div>
 
           {/* Annual Performance */}
