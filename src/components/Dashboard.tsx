@@ -137,6 +137,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
 
   const kpis = calculateKPIs();
 
+  // Auto-generate insights when transactions change
+  useEffect(() => {
+    if (transactions.length > 0 && !loadingInsights && insights.length === 0) {
+      generateInsights();
+    }
+  }, [transactions]);
+
   // Summary cards calculations
   const incomeSurplus = monthlyData.income - monthlyData.expenses;
   const budgetVariance = monthlyData.budgetedExpenses - monthlyData.expenses;
@@ -154,11 +161,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
 
   // Combined income and expense line chart
   const incomeExpenseLineData = {
-    labels: monthlyChartData.map(data => format(new Date(data.month + '-01'), 'MMM')),
+    labels: monthlyChartData
+      .filter(data => data.income > 0 || data.expenses > 0)
+      .map(data => format(new Date(data.month + '-01'), 'MMM')),
     datasets: [
       {
         label: 'Income',
-        data: monthlyChartData.map(data => data.income),
+        data: monthlyChartData
+          .filter(data => data.income > 0 || data.expenses > 0)
+          .map(data => data.income),
         borderColor: '#22C55E',
         backgroundColor: 'rgba(34, 197, 94, 0.1)',
         fill: false,
@@ -166,7 +177,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
       },
       {
         label: 'Expenses',
-        data: monthlyChartData.map(data => data.expenses),
+        data: monthlyChartData
+          .filter(data => data.income > 0 || data.expenses > 0)
+          .map(data => data.expenses),
         borderColor: '#EF4444',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         fill: false,
