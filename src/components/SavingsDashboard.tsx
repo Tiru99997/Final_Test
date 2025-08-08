@@ -157,18 +157,17 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
   const categorizeSavingsWithAI = async () => {
     setCategorizingSavings(true);
     
-    // Check if Supabase configuration is available
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseAnonKey || !supabaseUrl.startsWith('http')) {
-      console.warn('Supabase configuration not available or invalid, using fallback categorization');
-      useFallbackCategorization();
-      setCategorizingSavings(false);
-      return;
-    }
-    
     try {
+      // Check if Supabase configuration is available
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey || !supabaseUrl.startsWith('http')) {
+        console.warn('Supabase configuration not available or invalid, using fallback categorization');
+        useFallbackCategorization();
+        return;
+      }
+      
       const apiUrl = `${supabaseUrl}/functions/v1/financial-analysis`;
       
       // Validate URL format before making request
@@ -177,7 +176,6 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       } catch (urlError) {
         console.error('Invalid Supabase URL format:', apiUrl);
         useFallbackCategorization();
-        setCategorizingSavings(false);
         return;
       }
       
@@ -202,7 +200,6 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       if (!response.ok) {
         console.error(`Savings categorization failed: ${response.status}`);
         useFallbackCategorization();
-        setCategorizingSavings(false);
         return;
       }
 
@@ -219,7 +216,6 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       setSavingsByCategory(groupedSavings);
     } catch (error) {
       console.error('Error categorizing savings:', error);
-      // Use fallback categorization on any error
       useFallbackCategorization();
     } finally {
       setCategorizingSavings(false);
