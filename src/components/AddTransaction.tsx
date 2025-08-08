@@ -136,7 +136,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
         // Normalize header names to handle variations
         return header.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
       },
-      complete: (results) => {
+      complete: async (results) => {
         const importedTransactions: Transaction[] = [];
         
         results.data.forEach((row: any) => {
