@@ -99,192 +99,132 @@ const BudgetSettings: React.FC<BudgetSettingsProps> = ({ budgets, onUpdateBudget
       <div className="bg-white p-6 rounded-xl shadow-lg">
         <div className="flex items-center space-x-2 mb-4">
           <Settings className="h-6 w-6 text-green-600" />
-          <h2 className="text-2xl font-semibold text-gray-800">Budget Settings</h2>
+          <h2 className="text-2xl font-semibold text-gray-800">Credit Card Recommendations</h2>
         </div>
         
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div className="mb-4 sm:mb-0">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Month
-            </label>
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
-          </div>
-          
-          <div className="text-right">
-            <div className="text-sm text-gray-600">Total Budget</div>
-            <div className="text-2xl font-bold text-gray-800">
-              {formatCurrency(totalBudget)}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Budget Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500">
-          <h3 className="text-lg font-medium text-gray-800">Income Budget</h3>
-          <p className="text-2xl font-bold text-green-600">{formatCurrency(incomeBudget)}</p>
-        </div>
-        
-        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500">
-          <h3 className="text-lg font-medium text-gray-800">Expense Budget</h3>
-          <p className="text-2xl font-bold text-red-600">{formatCurrency(expenseBudget)}</p>
-        </div>
-        
-        <div className={`bg-white p-6 rounded-xl shadow-lg border-l-4 ${
-          incomeBudget - expenseBudget >= 0 ? 'border-green-500' : 'border-red-500'
-        }`}>
-          <h3 className="text-lg font-medium text-gray-800">Projected Surplus</h3>
-          <p className={`text-2xl font-bold ${
-            incomeBudget - expenseBudget >= 0 ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {formatCurrency(incomeBudget - expenseBudget)}
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <p className="text-sm text-blue-800">
+            Based on your spending patterns, here are personalized credit card recommendations to maximize your rewards and benefits.
           </p>
         </div>
       </div>
 
-      {/* Budget Categories */}
-      <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Category Budgets</h3>
-        
-        {/* Income Categories */}
-        <div className="mb-8">
-          <h4 className="font-medium text-green-700 mb-4">Income Categories</h4>
-          <div className="space-y-3">
-            {Object.entries(monthlyBudgets)
-              .filter(([category]) => Object.keys(INCOME_CATEGORIES).includes(category))
-              .map(([category, amount]) => (
-                <div key={category} className="flex items-center space-x-4">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700">
-                      {category}
-                    </label>
-                    <div className="text-xs text-gray-500">
-                      {INCOME_CATEGORIES[category]?.join(', ')}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={amount || ''}
-                      onChange={(e) => handleBudgetChange(category, e.target.value)}
-                      className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="0.00"
-                    />
-                    <button
-                      onClick={() => handleRemoveCategory(category)}
-                      className="text-red-600 hover:text-red-800 transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        {/* Expense Categories */}
-        <div className="mb-8">
-          <h4 className="font-medium text-red-700 mb-4">Expense Categories</h4>
-          <div className="space-y-3">
-            {Object.entries(monthlyBudgets)
-              .filter(([category]) => Object.keys(EXPENSE_CATEGORIES).includes(category))
-              .map(([category, amount]) => (
-                <div key={category} className="flex items-center space-x-4">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700">
-                      {category}
-                    </label>
-                    <div className="text-xs text-gray-500">
-                      {EXPENSE_CATEGORIES[category]?.join(', ')}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={amount || ''}
-                      onChange={(e) => handleBudgetChange(category, e.target.value)}
-                      className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="0.00"
-                    />
-                    <button
-                      onClick={() => handleRemoveCategory(category)}
-                      className="text-red-600 hover:text-red-800 transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        {/* Add New Category */}
-        {availableCategories.length > 0 && (
-          <div className="border-t pt-6">
-            <h4 className="font-medium text-gray-700 mb-4">Add Category</h4>
-            <div className="flex items-end space-x-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category
-                </label>
-                <select
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                >
-                  <option value="">Select category...</option>
-                  {availableCategories.map(category => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Budget Amount
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={newAmount}
-                  onChange={(e) => setNewAmount(e.target.value)}
-                  className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="0.00"
-                />
-              </div>
-              <button
-                onClick={handleAddCategory}
-                disabled={!newCategory || !newAmount}
-                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add</span>
-              </button>
+      {/* Credit Card Recommendations */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
+          <h3 className="text-lg font-medium text-gray-800">Grocery & Dining</h3>
+          <p className="text-sm text-gray-600 mb-3">Best for everyday spending</p>
+          <div className="space-y-2">
+            <div className="bg-blue-50 p-3 rounded">
+              <h4 className="font-medium text-blue-800">Chase Freedom Flex</h4>
+              <p className="text-xs text-blue-600">5% on rotating categories, 3% on dining</p>
+            </div>
+            <div className="bg-blue-50 p-3 rounded">
+              <h4 className="font-medium text-blue-800">Citi Double Cash</h4>
+              <p className="text-xs text-blue-600">2% on all purchases</p>
             </div>
           </div>
-        )}
+        </div>
+        
+        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500">
+          <h3 className="text-lg font-medium text-gray-800">Travel & Transportation</h3>
+          <p className="text-sm text-gray-600 mb-3">Best for travel rewards</p>
+          <div className="space-y-2">
+            <div className="bg-green-50 p-3 rounded">
+              <h4 className="font-medium text-green-800">Chase Sapphire Preferred</h4>
+              <p className="text-xs text-green-600">2x on travel & dining, transferable points</p>
+            </div>
+            <div className="bg-green-50 p-3 rounded">
+              <h4 className="font-medium text-green-800">Capital One Venture</h4>
+              <p className="text-xs text-green-600">2x miles on all purchases</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-purple-500">
+          <h3 className="text-lg font-medium text-gray-800">Cashback & General</h3>
+          <p className="text-sm text-gray-600 mb-3">Best overall value</p>
+          <div className="space-y-2">
+            <div className="bg-purple-50 p-3 rounded">
+              <h4 className="font-medium text-purple-800">Discover it Cash Back</h4>
+              <p className="text-xs text-purple-600">5% rotating categories, 1% on all</p>
+            </div>
+            <div className="bg-purple-50 p-3 rounded">
+              <h4 className="font-medium text-purple-800">Bank of America Cash Rewards</h4>
+              <p className="text-xs text-purple-600">3% on category of choice</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {/* Save Button */}
-        <div className="flex justify-end mt-8">
-          <button
-            onClick={handleSave}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-          >
-            <Save className="h-4 w-4" />
-            <span>Save Budget</span>
-          </button>
+      {/* Detailed Recommendations */}
+      <div className="bg-white p-6 rounded-xl shadow-lg">
+        <h3 className="text-lg font-semibold text-gray-800 mb-6">Personalized Recommendations</h3>
+        
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg">
+            <h4 className="font-semibold text-blue-800 mb-3">Based on Your Spending Analysis</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h5 className="font-medium text-blue-700 mb-2">Top Spending Categories:</h5>
+                <ul className="text-sm text-blue-600 space-y-1">
+                  <li>• Living Expenses (Grocery, Utilities)</li>
+                  <li>• Transportation (Fuel, Maintenance)</li>
+                  <li>• Entertainment (Dining, Movies)</li>
+                </ul>
+              </div>
+              <div>
+                <h5 className="font-medium text-blue-700 mb-2">Recommended Strategy:</h5>
+                <ul className="text-sm text-blue-600 space-y-1">
+                  <li>• Use rotating category cards for groceries</li>
+                  <li>• Travel card for gas and dining</li>
+                  <li>• Flat-rate card for everything else</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-lg">
+            <h4 className="font-semibold text-green-800 mb-3">Optimization Tips</h4>
+            <div className="space-y-3">
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
+                <p className="text-sm text-green-700">
+                  <strong>Maximize rotating categories:</strong> Use Chase Freedom Flex or Discover it for 5% back on quarterly categories
+                </p>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
+                <p className="text-sm text-green-700">
+                  <strong>Stack with dining:</strong> Chase Sapphire Preferred gives 2x points on dining, which transfers to travel partners
+                </p>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
+                <p className="text-sm text-green-700">
+                  <strong>Consider annual fees:</strong> Premium cards can be worth it if you spend enough in bonus categories
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-6 rounded-lg">
+            <h4 className="font-semibold text-yellow-800 mb-3">Important Considerations</h4>
+            <div className="space-y-2">
+              <p className="text-sm text-yellow-700">
+                • Always pay your full balance on time to avoid interest charges
+              </p>
+              <p className="text-sm text-yellow-700">
+                • Don't spend more just to earn rewards - the rewards should be a bonus
+              </p>
+              <p className="text-sm text-yellow-700">
+                • Consider your credit score and approval odds before applying
+              </p>
+              <p className="text-sm text-yellow-700">
+                • Space out applications to minimize impact on your credit score
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
