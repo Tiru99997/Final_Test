@@ -324,6 +324,9 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
   // Find the most recent month with data (current month or last month)
   const getMostRecentMonthData = () => {
+    console.log('Current month data:', { currentMonthIncome, currentMonthSavings, currentMonthSavingsRate });
+    console.log('Monthly savings data:', monthlySavingsData);
+    
     // Check if current month has any income or savings data
     if (currentMonthIncome > 0 || currentMonthSavings > 0) {
       return {
@@ -336,13 +339,21 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
     }
     
     // If current month has no data, find the most recent month with data from monthlySavingsData
-    const monthsWithData = monthlySavingsData
-      .slice() // Create a copy to avoid mutating original array
-      .reverse() // Most recent first
-      .filter(data => data.income > 0 || data.savings > 0);
+    // Create a copy and reverse to get most recent first
+    const reversedMonthlyData = [...monthlySavingsData].reverse();
+    console.log('Reversed monthly data:', reversedMonthlyData);
+    
+    const monthsWithData = reversedMonthlyData.filter(data => {
+      const hasData = data.income > 0 || data.savings > 0;
+      console.log(`Month ${data.month}: income=${data.income}, savings=${data.savings}, hasData=${hasData}`);
+      return hasData;
+    });
+    
+    console.log('Months with data:', monthsWithData);
     
     if (monthsWithData.length > 0) {
       const recentMonth = monthsWithData[0];
+      console.log('Selected recent month:', recentMonth);
       return {
         income: recentMonth.income,
         savings: recentMonth.savings,
@@ -352,6 +363,7 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       };
     }
     
+    console.log('No data found, using fallback');
     // Fallback if no data available
     return {
       income: 0,
