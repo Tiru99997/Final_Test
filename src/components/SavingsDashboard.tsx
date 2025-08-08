@@ -220,16 +220,18 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       // Enhanced categorization based on keywords
       if (description.includes('sip') || description.includes('systematic') || subcategory.includes('sip')) {
         acc['SIP'] = (acc['SIP'] || 0) + t.amount;
-      } else if (description.includes('mutual fund') || description.includes('mf ') || description.includes(' mf') || subcategory.includes('mutual')) {
+      } else if (description.includes('mutual fund') || description.includes('mf ') || description.includes(' mf') || description.includes('mutual') || description.includes('fund') || subcategory.includes('mutual')) {
         acc['Mutual Fund'] = (acc['Mutual Fund'] || 0) + t.amount;
       } else if (description.includes('stock') || description.includes('equity') || description.includes('shares') || subcategory.includes('stock')) {
         acc['Stocks'] = (acc['Stocks'] || 0) + t.amount;
-      } else if (description.includes('fd ') || description.includes(' fd') || description.includes('fixed deposit') || subcategory.includes('fd')) {
+      } else if (description.includes('fd ') || description.includes(' fd') || description.includes('fixed deposit') || description.includes('fd') || description.includes('deposit') || subcategory.includes('fd')) {
         acc['Fixed Deposits'] = (acc['Fixed Deposits'] || 0) + t.amount;
-      } else if (description.includes('rd ') || description.includes(' rd') || description.includes('recurring deposit') || subcategory.includes('rd')) {
+      } else if (description.includes('rd ') || description.includes(' rd') || description.includes('recurring deposit') || description.includes('recurring') || subcategory.includes('rd')) {
         acc['Recurring Deposits'] = (acc['Recurring Deposits'] || 0) + t.amount;
       } else if (description.includes('aif') || description.includes('alternative investment') || subcategory.includes('aif')) {
         acc['AIF'] = (acc['AIF'] || 0) + t.amount;
+      } else if (description.includes('investment') || description.includes('invest') || description.includes('saving') || description.includes('ppf') || description.includes('nsc') || description.includes('elss')) {
+        acc['Investment Savings'] = (acc['Investment Savings'] || 0) + t.amount;
       } else {
         acc['Other Savings'] = (acc['Other Savings'] || 0) + t.amount;
       }
