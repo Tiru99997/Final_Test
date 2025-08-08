@@ -43,7 +43,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [viewMode, setViewMode] = useState<'monthly' | 'cumulative'>('monthly');
+  const [viewMode, setViewMode] = useState<'monthly' | 'cumulative'>('cumulative');
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [insights, setInsights] = useState<string[]>([]);
   
@@ -271,7 +271,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         const data = await response.json();
         setInsights(data.metrics?.insights || []);
       } else {
-        // Fallback insights based on calculations
+        fallbackInsights.push(`Excellent! Your savings rate of ${kpis.savingsRatio.toFixed(1)}% exceeds the recommended 15%.`);
         const fallbackInsights = [];
         
         // Calculate investment data for analysis using ALL transactions (not just filtered)
@@ -340,61 +340,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
       setInsights(['Unable to generate insights at this time. Please try again later.']);
     } finally {
       setLoadingInsights(false);
-    }
-  };
-
-  // Get category-wise breakdown for P&L
-  const getCategoryBreakdown = () => {
-    const monthsData = getMonthsWithData(6);
-    const categoryBreakdown = {};
-    
-    monthsData.forEach(monthData => {
-      const monthStr = monthData.month;
-      const monthDate = new Date(monthData.month + ' 01, 2024'); // Parse month string
-      const monthStart = startOfMonth(monthDate);
-      const monthEnd = endOfMonth(monthDate);
-      
-      const monthTransactions = transactions.filter(t => 
-        t.date >= monthStart && t.date <= monthEnd
-      );
-      
-      // Group by category and type
-      monthTransactions.forEach(t => {
-        const key = `${t.type}_${t.category}`;
-        if (!categoryBreakdown[key]) {
-          categoryBreakdown[key] = { category: t.category, type: t.type, months: {} };
-        }
-        categoryBreakdown[key].months[monthStr] = 
-          (categoryBreakdown[key].months[monthStr] || 0) + t.amount;
-      });
-    });
-    
-    return { monthsData, categoryBreakdown };
-  };
-
-  const { monthsData, categoryBreakdown } = getCategoryBreakdown();
-
-  // Current month transactions for pie charts
-  const currentMonthTransactions = filteredTransactions.filter(t => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
-    return viewMode === 'cumulative' || (t.date >= monthStart && t.date <= monthEnd);
-  });
-
-  const categoryBudgets = budgets.filter(b => {
-    const budgetMonth = new Date(b.month);
-    return budgetMonth.getMonth() === currentMonth.getMonth() && 
-           budgetMonth.getFullYear() === currentMonth.getFullYear();
   });
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Header with Export Button */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-800">Financial Dashboard</h1>
-            <p className="text-gray-600 mt-1">
+      if (kpis.savingsRatio < 15) {
+        fallbackInsights.push(`Your savings rate of ${kpis.savingsRatio.toFixed(1)}% is below the recommended 15%. Try to increase your savings by reducing discretionary spending.`);
               {viewMode === 'cumulative' ? 'Cumulative Overview' : `${format(selectedMonth, 'MMMM yyyy')} Overview`}
               {viewMode === 'monthly' && ' - Select month below to analyze'}
             </p>
