@@ -14,9 +14,9 @@ const Navigation: React.FC<NavigationProps> = ({ activeView, onViewChange, user 
   
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'savings', label: 'Savings', icon: PiggyBank },
     { id: 'ai-insights', label: 'Expense', icon: Brain },
     { id: 'budget-settings', label: 'Goals', icon: Target },
-    { id: 'savings', label: 'Savings', icon: PiggyBank },
     { id: 'add-transaction', label: 'Add Transaction', icon: Plus },
     { id: 'history', label: 'History', icon: History },
   ];
