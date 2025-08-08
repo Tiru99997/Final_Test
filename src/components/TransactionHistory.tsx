@@ -385,14 +385,10 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                 <input
                   type="date"
-                  value={(() => {
-                    // Format date for input field considering Asia/Kolkata timezone
-                    const kolkataDate = new Date(editingTransaction.date.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
-                    return kolkataDate.toISOString().split('T')[0];
-                  })()}
+                  value={editingTransaction.date.toLocaleDateString('en-CA')}
                   onChange={(e) => setEditingTransaction({
                     ...editingTransaction,
-                    date: new Date(e.target.value + 'T12:00:00+05:30') // Set to noon in Asia/Kolkata
+                    date: new Date(e.target.value + 'T00:00:00')
                   })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                 />

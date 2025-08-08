@@ -1,6 +1,31 @@
 import { supabase } from '../lib/supabase';
 import { Transaction, Budget } from '../types';
 
+// Utility functions for date handling in Asia/Kolkata timezone
+const formatDateForDB = (date: Date): string => {
+  // Create a new date in Asia/Kolkata timezone
+  const istDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+  const year = istDate.getFullYear();
+  const month = String(istDate.getMonth() + 1).padStart(2, '0');
+  const day = String(istDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateFromDB = (dateString: string): Date => {
+  // Parse the date string and create a date object in Asia/Kolkata timezone
+  const [year, month, day] = dateString.split('-').map(Number);
+  // Create date at midnight in Asia/Kolkata timezone
+  const date = new Date();
+  date.setFullYear(year, month - 1, day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+const getCurrentDateIST = (): string => {
+  const now = new Date();
+  return formatDateForDB(now);
+};
+
 // Transaction operations
 export const saveTransaction = async (transaction: Transaction): Promise<{ data: any; error: any }> => {
   const { data: { user } } = await supabase.auth.getUser();
@@ -9,11 +34,6 @@ export const saveTransaction = async (transaction: Transaction): Promise<{ data:
     return { data: null, error: { message: 'User not authenticated' } };
   }
 
-  // Convert date to Asia/Kolkata timezone and format as YYYY-MM-DD
-  const formatDateForDB = (date: Date): string => {
-    const kolkataDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
-    return kolkataDate.toISOString().split('T')[0];
-  };
   const { data, error } = await supabase
     .from('transactions')
     .insert({
@@ -49,12 +69,6 @@ export const loadTransactions = async (): Promise<Transaction[]> => {
     return [];
   }
 
-  // Parse dates considering Asia/Kolkata timezone
-  const parseDateFromDB = (dateString: string): Date => {
-    // Create date at noon in Asia/Kolkata to avoid timezone issues
-    const date = new Date(dateString + 'T12:00:00+05:30');
-    return date;
-  };
   return data.map(t => ({
     id: t.id,
     date: parseDateFromDB(t.date),
@@ -73,11 +87,6 @@ export const updateTransaction = async (transaction: Transaction): Promise<{ dat
     return { data: null, error: { message: 'User not authenticated' } };
   }
 
-  // Convert date to Asia/Kolkata timezone and format as YYYY-MM-DD
-  const formatDateForDB = (date: Date): string => {
-    const kolkataDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
-    return kolkataDate.toISOString().split('T')[0];
-  };
   const { data, error } = await supabase
     .from('transactions')
     .update({
@@ -119,11 +128,6 @@ export const bulkInsertTransactions = async (transactions: Transaction[]): Promi
     return { data: null, error: { message: 'User not authenticated' } };
   }
 
-  // Convert date to Asia/Kolkata timezone and format as YYYY-MM-DD
-  const formatDateForDB = (date: Date): string => {
-    const kolkataDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
-    return kolkataDate.toISOString().split('T')[0];
-  };
   const transactionsToInsert = transactions.map(t => ({
     user_id: user.id,
     date: formatDateForDB(t.date),
