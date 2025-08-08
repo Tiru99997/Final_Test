@@ -117,37 +117,90 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
 
     Papa.parse(file, {
       header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => {
+        // Normalize header names to handle variations
+        return header.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      },
       complete: (results) => {
         const importedTransactions: Transaction[] = [];
         
         results.data.forEach((row: any) => {
-          if (row.Date && row.Amount && row.Category) {
+          // Handle various possible column names
+          const date = row.date || row.Date || row.DATE;
+          const amount = row.amount || row.Amount || row.AMOUNT;
+          const category = row.category || row.Category || row.CATEGORY;
+          const subcategory = row.subcategory || row.Subcategory || row.SUBCATEGORY || row.subCategory;
+          const description = row.description || row.Description || row.DESCRIPTION;
+          const type = row.type || row.Type || row.TYPE;
+          
+          if (date && amount && category) {
+            // Parse amount - remove commas, currency symbols, and handle various formats
+            let parsedAmount = 0;
+            if (typeof amount === 'string') {
+              // Remove currency symbols, commas, and spaces
+              const cleanAmount = amount.replace(/[$,\s]/g, '');
+              parsedAmount = parseFloat(cleanAmount);
+            } else {
+              parsedAmount = parseFloat(amount);
+            }
+            
+            // Parse date - handle various date formats
+            let parsedDate = new Date();
+            if (typeof date === 'string') {
+              // Try different date formats
+              const dateFormats = [
+                date, // Original format
+                date.replace(/\//g, '-'), // Replace / with -
+                date.replace(/\./g, '-'), // Replace . with -
+              ];
+              
+              for (const dateFormat of dateFormats) {
+                const testDate = new Date(dateFormat);
+                if (!isNaN(testDate.getTime())) {
+                  parsedDate = testDate;
+                  break;
+                }
+              }
+            } else {
+              parsedDate = new Date(date);
+            }
+            
+            // Validate parsed values
+            if (isNaN(parsedAmount) || parsedAmount <= 0) {
+              console.warn(`Invalid amount for row:`, row);
+              return;
+            }
+            
+            if (isNaN(parsedDate.getTime())) {
+              console.warn(`Invalid date for row:`, row);
+              return;
+            }
+            
             const transaction: Transaction = {
               id: generateId(),
-              date: new Date(row.Date),
-              category: row.Category,
-              subcategory: row.Subcategory || row.Category,
-              amount: parseFloat(row.Amount),
-              description: row.Description || '',
-              type: row.Type?.toLowerCase() === 'income' ? 'income' : 'expense',
+              date: parsedDate,
+              category: category,
+              subcategory: subcategory || category,
+              amount: parsedAmount,
+              description: description || '',
+              type: type?.toLowerCase() === 'income' ? 'income' : 'expense',
             };
             
-            if (!isNaN(transaction.amount)) {
-              importedTransactions.push(transaction);
-            }
+            importedTransactions.push(transaction);
           }
         });
 
         if (importedTransactions.length > 0) {
           onBulkImport(importedTransactions);
-          alert(`Successfully imported ${importedTransactions.length} transactions`);
+          alert(`Successfully imported ${importedTransactions.length} transactions out of ${results.data.length} rows`);
         } else {
-          alert('No valid transactions found in the CSV file');
+          alert('No valid transactions found in the CSV file. Please check the format and required columns.');
         }
       },
       error: (error) => {
         console.error('CSV parsing error:', error);
-        alert('Error parsing CSV file');
+        alert('Error parsing CSV file: ' + error.message);
       }
     });
 
@@ -224,9 +277,12 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
           <code className="text-xs bg-white p-2 rounded block">
             Date, Type, Category, Subcategory, Amount, Description
           </code>
-          <p className="text-xs text-gray-500 mt-2">
-            Type should be either "income" or "expense". Date format: YYYY-MM-DD
-          </p>
+          <div className="text-xs text-gray-500 mt-2 space-y-1">
+            <p>• Type should be either "income" or "expense"</p>
+            <p>• Date formats supported: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY</p>
+            <p>• Amount can include commas and currency symbols (e.g., $100,000 or 100000)</p>
+            <p>• Column names are case-insensitive</p>
+          </div>
         </div>
       </div>
 
