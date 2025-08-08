@@ -344,7 +344,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         <div className="bg-white p-6 rounded-xl shadow-lg">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Income Categories</h3>
           <div className="h-64">
-            {currentMonthTransactions.filter(t => t.type === 'income').length > 0 ? (
+            {Object.keys(INCOME_CATEGORIES).some(cat => categoryTotals[cat] > 0) ? (
               <Pie 
                 data={{
                   labels: Object.keys(INCOME_CATEGORIES).filter(cat => categoryTotals[cat] > 0),

@@ -142,11 +142,11 @@ EXPENSE CATEGORIES:
 - Other (Miscellaneous, Bank Charges, Legal Fees, Professional Services, Repairs, Maintenance)
 
 INCOME CATEGORIES:
-- Employment Income (Salary, Wages, Bonus, Overtime, Commission, Tips, Freelance Income, Consulting Income)
-- Investment Income (Dividends, Interest, Capital Gains, Mutual Fund Returns, Stock Profits, Bond Interest, Crypto Gains)
+- Salary (Salary, Wages, Bonus, Overtime, Commission, Tips, Freelance Income, Consulting Income)
+- Dividend (Dividends, Interest, Capital Gains, Mutual Fund Returns, Stock Profits, Bond Interest, Crypto Gains)
 - Rental Income (Property Rent, Room Rent, Commercial Rent, Parking Rent, Equipment Rental, Airbnb Income)
-- Business Income (Business Profits, Partnership Income, Royalties, Licensing, Product Sales, Service Income)
-- Other Income (Gifts, Inheritance, Insurance Claims, Refunds, Cashback, Prize Money, Government Benefits, Pension)
+- Business (Business Profits, Partnership Income, Royalties, Licensing, Product Sales, Service Income)
+- Other (Gifts, Inheritance, Insurance Claims, Refunds, Cashback, Prize Money, Government Benefits, Pension)
 
 Transactions to categorize:
 ${batch.map(t => `- ${t.description} ($${t.amount}) [${t.type}]`).join('\n')}
@@ -154,7 +154,7 @@ ${batch.map(t => `- ${t.description} ($${t.amount}) [${t.type}]`).join('\n')}
 Rules:
 1. Determine if each transaction is "income" or "expense" based on the description
 2. Choose the most appropriate category and subcategory
-3. Salary, dividend, rental income -> Employment Income, Investment Income, Rental Income respectively
+3. Salary, dividend, rental income -> Salary, Dividend, Rental Income respectively
 4. House rent -> Rental category
 5. Grocery, maids, fruits & vegetables -> Living Expenses
 6. Car loan and home loan -> Debt category
@@ -241,10 +241,10 @@ function categorizeTransactionsFallback(transactions: Transaction[]): Transactio
     
     if (isIncome) {
       if (description.includes('salary') || description.includes('wage') || description.includes('bonus')) {
-        return { ...transaction, type: 'income', category: 'Employment Income', subcategory: 'Salary' }
+        return { ...transaction, type: 'income', category: 'Salary', subcategory: 'Salary' }
       }
       if (description.includes('dividend') || description.includes('interest')) {
-        return { ...transaction, type: 'income', category: 'Investment Income', subcategory: 'Dividends' }
+        return { ...transaction, type: 'income', category: 'Dividend', subcategory: 'Dividends' }
       }
       if (description.includes('rent income') || description.includes('rental income')) {
         return { ...transaction, type: 'income', category: 'Rental Income', subcategory: 'Property Rent' }
@@ -252,7 +252,7 @@ function categorizeTransactionsFallback(transactions: Transaction[]): Transactio
       return {
         ...transaction,
         type: 'income',
-        category: 'Employment Income',
+        category: 'Salary',
         subcategory: 'Salary'
       }
     }

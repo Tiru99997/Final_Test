@@ -56,11 +56,11 @@ export const EXPENSE_CATEGORIES: CategoryStructure = {
 };
 
 export const INCOME_CATEGORIES: CategoryStructure = {
-  'Employment Income': [
+  'Salary': [
     'Salary', 'Wages', 'Bonus', 'Overtime', 'Commission', 'Tips',
     'Freelance Income', 'Consulting Income'
   ],
-  'Investment Income': [
+  'Dividend': [
     'Dividends', 'Interest', 'Capital Gains', 'Mutual Fund Returns',
     'Stock Profits', 'Bond Interest', 'Crypto Gains'
   ],
@@ -68,11 +68,11 @@ export const INCOME_CATEGORIES: CategoryStructure = {
     'Property Rent', 'Room Rent', 'Commercial Rent', 'Parking Rent',
     'Equipment Rental', 'Airbnb Income'
   ],
-  'Business Income': [
+  'Business': [
     'Business Profits', 'Partnership Income', 'Royalties', 'Licensing',
     'Product Sales', 'Service Income'
   ],
-  'Other Income': [
+  'Other': [
     'Gifts', 'Inheritance', 'Insurance Claims', 'Refunds', 'Cashback',
     'Prize Money', 'Government Benefits', 'Pension'
   ]
@@ -98,11 +98,11 @@ export const getCategoryColor = (category: string): string => {
     'Charity': '#A855F7',
     'Savings': '#059669',
     'Other': '#6B7280',
-    'Employment Income': '#22C55E',
-    'Investment Income': '#16A34A',
+    'Salary': '#22C55E',
+    'Dividend': '#16A34A',
     'Rental Income': '#059669',
-    'Business Income': '#10B981',
-    'Other Income': '#34D399'
+    'Business': '#10B981',
+    'Other': '#34D399'
   };
   return colors[category] || '#6B7280';
 };
