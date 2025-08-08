@@ -122,26 +122,40 @@ async function categorizeTransactions(transactions: Transaction[], apiKey: strin
 You are a financial categorization expert. Categorize the following transactions into appropriate categories and subcategories.
 
 Available Categories:
-- Leisure (Clothes, Entertainment, Vacation, Gifts, Netflix, Spotify, etc.)
-- Dining Out (Restaurant, Coffee, Sandwich)
+EXPENSE CATEGORIES:
+- Living Expenses (Grocery, Food, Restaurant, Coffee, Utilities, Electricity, Gas, Water, Internet, Phone, Household Items, Personal Care)
+- Rental (Rent, Mortgage, Property Tax, Home Insurance, HOA Fees, Maintenance, Repairs)
+- Travel (Flight, Hotel, Car Rental, Gas, Parking, Taxi, Uber, Train, Bus, Vacation)
+- Entertainment (Movies, Concerts, Sports Events, Netflix, Spotify, Gaming, Books, Hobbies)
 - Medical (Scans, Medical Insurance, Physiotherapy, Dental, Prescriptions, GP, Blood test, Hospital)
-- Personal Development (Courses, Gym)
-- Transport (Taxi, Bus)
+- Personal Development (Courses, Gym, Training, Books, Workshops)
+- Shopping (Clothes, Electronics, Gifts, Personal Items, Home Decor, Furniture, Appliances)
 - Charity (Donation)
-- Bills (Electricity, Gas, Water, Broadband, Bins)
 - Savings (Long term saving, Short term saving)
 - Investments (Stocks, Bonds, Commodity, Crypto)
-- Living Expenses (Grocery, Laundry, Inessentials, Toiletries, Kitchen supplies)
-- Fixed Income (Salary)
-- Variable Income (Dividends, Casino profit)
+- Other (Miscellaneous, Fees, Taxes, Insurance, Legal, Professional Services)
+
+INCOME CATEGORIES:
+- Income (Salary, Wages, Bonus, Overtime, Commission, Freelance, Business Income, Side Hustle)
+- Rental Income (Property Rent, Room Rent, Airbnb, Parking Rent)
+- Investment Income (Dividends, Interest, Capital Gains, Crypto Gains)
+- Other Income (Gifts, Refunds, Cashback, Lottery, Insurance Claims)
 
 Transactions to categorize:
 ${batch.map(t => `- ${t.description} ($${t.amount}) [${t.type}]`).join('\n')}
+
+Rules:
+1. Determine if each transaction is "income" or "expense" based on the description
+2. Choose the most appropriate category and subcategory
+3. Group food-related expenses under "Living Expenses"
+4. Group housing costs under "Rental"
+5. Group transportation under "Travel"
 
 Return a JSON array with the same order, each containing:
 {
   "category": "category_name",
   "subcategory": "subcategory_name",
+  "type": "income" or "expense",
   "confidence": 0.95
 }
 
