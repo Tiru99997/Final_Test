@@ -274,8 +274,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         // Fallback insights based on calculations
         const fallbackInsights = [];
         
-        // Calculate investment data for analysis
-        const investmentTransactions = filteredTransactions.filter(t => {
+        // Calculate investment data for analysis using ALL transactions (not just filtered)
+        const investmentTransactions = transactions.filter(t => {
           if (t.type !== 'expense') return false;
           if (t.category === 'Savings') return true;
           const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
@@ -325,10 +325,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
           fallbackInsights.push(`Your debt-to-income ratio of ${kpis.debtToIncomeRatio.toFixed(1)}% is healthy and within recommended limits.`);
         }
         
-        if (kpis.savingsRatio < 15) {
-          fallbackInsights.push(`Your savings rate of ${kpis.savingsRatio.toFixed(1)}% is below the recommended 15%. Try to increase your savings by reducing discretionary spending.`);
+        // Use the same savings rate calculation as KPIs
+        const currentSavingsRate = kpis.savingsRatio;
+        if (currentSavingsRate < 15) {
+          fallbackInsights.push(`Your savings rate of ${currentSavingsRate.toFixed(1)}% is below the recommended 15%. Try to increase your savings by reducing discretionary spending.`);
         } else {
-          fallbackInsights.push(`Excellent! Your savings rate of ${kpis.savingsRatio.toFixed(1)}% exceeds the recommended 15%.`);
+          fallbackInsights.push(`Excellent! Your savings rate of ${currentSavingsRate.toFixed(1)}% exceeds the recommended 15%.`);
         }
         
         setInsights(fallbackInsights);
