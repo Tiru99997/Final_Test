@@ -157,38 +157,13 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
   const categorizeSavingsWithAI = async () => {
     setCategorizingSavings(true);
     
-    // Check if Supabase URL is available
+    // Check if Supabase configuration is available
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
     if (!supabaseUrl || !supabaseAnonKey) {
       console.warn('Supabase configuration not available, using fallback categorization');
-      // Use fallback categorization
-      const fallbackSavings = savingsTransactions.reduce((acc, t) => {
-        const description = t.description?.toLowerCase() || '';
-        const subcategory = t.subcategory?.toLowerCase() || '';
-        
-        // Categorize based on description or subcategory
-        if (description.includes('sip') || description.includes('systematic') || subcategory.includes('sip')) {
-          acc['SIP'] = (acc['SIP'] || 0) + t.amount;
-        } else if (description.includes('mutual fund') || description.includes('mf') || subcategory.includes('mutual')) {
-          acc['Mutual Fund'] = (acc['Mutual Fund'] || 0) + t.amount;
-        } else if (description.includes('stock') || description.includes('equity') || description.includes('shares') || subcategory.includes('stock')) {
-          acc['Stocks'] = (acc['Stocks'] || 0) + t.amount;
-        } else if (description.includes('fd') || description.includes('fixed deposit') || subcategory.includes('fd')) {
-          acc['FD'] = (acc['FD'] || 0) + t.amount;
-        } else if (description.includes('rd') || description.includes('recurring deposit') || subcategory.includes('rd')) {
-          acc['RD'] = (acc['RD'] || 0) + t.amount;
-        } else if (description.includes('aif') || description.includes('alternative investment') || subcategory.includes('aif')) {
-          acc['AIF'] = (acc['AIF'] || 0) + t.amount;
-        } else {
-          acc['Other Savings'] = (acc['Other Savings'] || 0) + t.amount;
-        }
-        return acc;
-      }, {} as { [key: string]: number });
-      
-      setSavingsByCategory(fallbackSavings);
-      setCategorizingSavings(false);
+      useFallbackCategorization();
       return;
     }
     
@@ -230,15 +205,38 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       setSavingsByCategory(groupedSavings);
     } catch (error) {
       console.error('Error categorizing savings:', error);
-      // Fallback to original subcategory grouping
-      const fallbackSavings = savingsTransactions.reduce((acc, t) => {
-        acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
-        return acc;
-      }, {} as { [key: string]: number });
-      setSavingsByCategory(fallbackSavings);
+      // Use fallback categorization on any error
+      useFallbackCategorization();
     } finally {
       setCategorizingSavings(false);
     }
+  };
+
+  const useFallbackCategorization = () => {
+    const fallbackSavings = savingsTransactions.reduce((acc, t) => {
+      const description = (t.description || '').toLowerCase();
+      const subcategory = (t.subcategory || '').toLowerCase();
+      
+      // Enhanced categorization based on keywords
+      if (description.includes('sip') || description.includes('systematic') || subcategory.includes('sip')) {
+        acc['SIP'] = (acc['SIP'] || 0) + t.amount;
+      } else if (description.includes('mutual fund') || description.includes('mf ') || description.includes(' mf') || subcategory.includes('mutual')) {
+        acc['Mutual Fund'] = (acc['Mutual Fund'] || 0) + t.amount;
+      } else if (description.includes('stock') || description.includes('equity') || description.includes('shares') || subcategory.includes('stock')) {
+        acc['Stocks'] = (acc['Stocks'] || 0) + t.amount;
+      } else if (description.includes('fd ') || description.includes(' fd') || description.includes('fixed deposit') || subcategory.includes('fd')) {
+        acc['Fixed Deposits'] = (acc['Fixed Deposits'] || 0) + t.amount;
+      } else if (description.includes('rd ') || description.includes(' rd') || description.includes('recurring deposit') || subcategory.includes('rd')) {
+        acc['Recurring Deposits'] = (acc['Recurring Deposits'] || 0) + t.amount;
+      } else if (description.includes('aif') || description.includes('alternative investment') || subcategory.includes('aif')) {
+        acc['AIF'] = (acc['AIF'] || 0) + t.amount;
+      } else {
+        acc['Other Savings'] = (acc['Other Savings'] || 0) + t.amount;
+      }
+      return acc;
+    }, {} as { [key: string]: number });
+    
+    setSavingsByCategory(fallbackSavings);
   };
 
   const savingsPieData = {
