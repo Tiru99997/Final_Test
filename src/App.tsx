@@ -82,6 +82,11 @@ function App() {
     
     // Reload all transactions to get the latest data
     await loadData();
+    
+    // Auto-trigger AI insights after successful import
+    setTimeout(() => {
+      triggerAIInsights();
+    }, 1000);
   };
 
   const handleDeleteTransaction = async (id: string) => {
@@ -143,6 +148,39 @@ function App() {
     }
     
     setBudgets(sampleBudgets);
+    
+    // Auto-trigger AI insights after loading sample data
+    setTimeout(() => {
+      triggerAIInsights();
+    }, 1000);
+  };
+
+  const triggerAIInsights = async () => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
+      
+      await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactions: transactions.map(t => ({
+            id: t.id,
+            date: t.date.toISOString().split('T')[0],
+            description: t.description || `${t.category} - ${t.subcategory}`,
+            amount: t.amount,
+            category: t.category,
+            subcategory: t.subcategory,
+            type: t.type
+          })),
+          action: 'analyze'
+        })
+      });
+    } catch (error) {
+      console.error('Auto AI insights failed:', error);
+    }
   };
 
   // Show loading spinner while checking authentication

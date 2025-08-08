@@ -37,7 +37,9 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
   const currentDate = new Date();
   
   // Calculate total savings
-  const totalSavings = calculateSavingsProgress(transactions);
+  const totalSavings = transactions
+    .filter(t => t.type === 'expense' && t.category === 'Savings')
+    .reduce((sum, t) => sum + t.amount, 0);
   
   // Monthly savings data for last 12 months
   const last12Months = Array.from({ length: 12 }, (_, i) => {
@@ -64,7 +66,7 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       .reduce((sum, t) => sum + t.amount, 0);
 
     const savings = monthlyTransactions
-      .filter(t => t.type === 'expense' && t.category === 'Savings')
+      .filter(t => t.type === 'expense' && (t.category === 'Savings' || t.category === 'Investments'))
       .reduce((sum, t) => sum + t.amount, 0);
 
     return {
@@ -98,7 +100,7 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
   // Savings by subcategory (pie chart)
   const savingsTransactions = transactions.filter(t => 
-    t.type === 'expense' && t.category === 'Savings'
+    t.type === 'expense' && (t.category === 'Savings' || t.category === 'Investments')
   );
   
   const savingsBySubcategory = savingsTransactions.reduce((acc, t) => {
@@ -149,8 +151,18 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
     retirement: 500000,
   };
 
-  const monthlyProgress = (currentMonthData.savings / savingsTargets.monthly) * 100;
-  const annualProgress = (totalSavings / savingsTargets.annual) * 100;
+
+  // Calculate net worth (total savings accumulated over time)
+  const calculateNetWorth = () => {
+    const allSavingsTransactions = transactions.filter(t => 
+      t.type === 'expense' && 
+      (t.category === 'Savings' || t.category === 'Investments') &&
+      t.date <= new Date()
+    );
+    return allSavingsTransactions.reduce((sum, t) => sum + t.amount, 0);
+  };
+
+  const netWorth = calculateNetWorth();
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">

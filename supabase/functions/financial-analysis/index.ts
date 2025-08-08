@@ -225,33 +225,45 @@ function categorizeTransactionsFallback(transactions: Transaction[]): Transactio
     const description = transaction.description.toLowerCase()
     
     // Income keywords
-    const incomeKeywords = ['salary', 'wage', 'bonus', 'income', 'pay', 'dividend', 'interest', 'rent income', 'freelance', 'commission']
+    const incomeKeywords = [
+      'salary', 'wage', 'wages', 'bonus', 'income', 'pay', 'paycheck', 'payment',
+      'dividend', 'interest', 'rent income', 'freelance', 'commission', 'refund',
+      'cashback', 'reimbursement', 'allowance', 'stipend', 'pension', 'benefits'
+    ]
     const isIncome = incomeKeywords.some(keyword => description.includes(keyword))
     
     if (isIncome) {
       return {
         ...transaction,
         type: 'income',
-        category: 'Income',
+        category: 'Fixed Income',
         subcategory: 'Salary'
       }
     }
     
     // Expense categorization
-    if (description.includes('grocery') || description.includes('food') || description.includes('restaurant') || description.includes('coffee')) {
-      return { ...transaction, type: 'expense', category: 'Living Expenses', subcategory: 'Food' }
+    if (description.includes('grocery') || description.includes('food') || description.includes('restaurant') || description.includes('coffee') || description.includes('lunch') || description.includes('dinner')) {
+      return { ...transaction, type: 'expense', category: 'Living Expenses', subcategory: 'Grocery' }
     }
     
     if (description.includes('rent') || description.includes('mortgage') || description.includes('utilities')) {
-      return { ...transaction, type: 'expense', category: 'Rental', subcategory: 'Housing' }
+      return { ...transaction, type: 'expense', category: 'Bills', subcategory: 'Rent' }
     }
     
-    if (description.includes('gas') || description.includes('uber') || description.includes('taxi') || description.includes('flight') || description.includes('hotel')) {
-      return { ...transaction, type: 'expense', category: 'Travel', subcategory: 'Transportation' }
+    if (description.includes('gas') || description.includes('uber') || description.includes('taxi') || description.includes('bus')) {
+      return { ...transaction, type: 'expense', category: 'Transport', subcategory: 'Taxi' }
     }
     
-    if (description.includes('movie') || description.includes('netflix') || description.includes('spotify') || description.includes('entertainment')) {
-      return { ...transaction, type: 'expense', category: 'Entertainment', subcategory: 'Leisure' }
+    if (description.includes('movie') || description.includes('netflix') || description.includes('spotify') || description.includes('entertainment') || description.includes('vacation') || description.includes('holiday')) {
+      return { ...transaction, type: 'expense', category: 'Leisure', subcategory: 'Entertainment' }
+    }
+    
+    if (description.includes('saving') || description.includes('investment') || description.includes('401k') || description.includes('retirement')) {
+      return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'Long term saving' }
+    }
+    
+    if (description.includes('medical') || description.includes('doctor') || description.includes('hospital') || description.includes('pharmacy')) {
+      return { ...transaction, type: 'expense', category: 'Medical', subcategory: 'GP' }
     }
     
     // Default to Other for unrecognized expenses
