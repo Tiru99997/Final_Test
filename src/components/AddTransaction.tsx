@@ -162,20 +162,44 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
             let parsedDate = new Date();
             if (typeof date === 'string') {
               // Try different date formats
-              const dateFormats = [
-                date, // Original format
-                date.replace(/\//g, '-'), // Replace / with -
-                date.replace(/\./g, '-'), // Replace . with -
-              ];
+              // Handle date parsing to avoid timezone issues
+              let dateStr = date.trim();
               
-              for (const dateFormat of dateFormats) {
-                const testDate = new Date(dateFormat);
-                if (!isNaN(testDate.getTime())) {
-                  parsedDate = testDate;
-                  break;
+              // Convert various formats to YYYY-MM-DD
+              if (dateStr.includes('/')) {
+                // Handle MM/DD/YYYY or DD/MM/YYYY formats
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                  // Assume MM/DD/YYYY format (most common in CSV exports)
+                  const month = parts[0].padStart(2, '0');
+                  const day = parts[1].padStart(2, '0');
+                  const year = parts[2];
+                  dateStr = `${year}-${month}-${day}`;
+                }
+              } else if (dateStr.includes('.')) {
+                // Handle DD.MM.YYYY format
+                const parts = dateStr.split('.');
+                if (parts.length === 3) {
+                  const day = parts[0].padStart(2, '0');
+                  const month = parts[1].padStart(2, '0');
+                  const year = parts[2];
+                  dateStr = `${year}-${month}-${day}`;
                 }
               }
+              
+              // Create date using local timezone to avoid day shift
+              const dateParts = dateStr.split('-');
+              if (dateParts.length === 3) {
+                const year = parseInt(dateParts[0]);
+                const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed
+                const day = parseInt(dateParts[2]);
+                parsedDate = new Date(year, month, day);
+              } else {
+                // Fallback to direct parsing
+                parsedDate = new Date(dateStr);
+              }
             } else {
+              // If date is already a Date object or number
               parsedDate = new Date(date);
             }
             
