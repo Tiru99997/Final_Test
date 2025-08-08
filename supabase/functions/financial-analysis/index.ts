@@ -53,13 +53,17 @@ serve(async (req) => {
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
     if (!openaiApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+      console.warn('OpenAI API key not configured, using fallback categorization')
+      // Use fallback categorization when API key is not available
+      if (action === 'categorize') {
+        const categorizedTransactions = categorizeTransactionsFallback(transactions)
+        return new Response(
+          JSON.stringify({ categorizedTransactions }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
     }
 
     if (action === 'categorize') {
@@ -214,6 +218,50 @@ Only return the JSON array, no other text.`
   }
 
   return categorizedTransactions
+}
+
+function categorizeTransactionsFallback(transactions: Transaction[]): Transaction[] {
+  return transactions.map(transaction => {
+    const description = transaction.description.toLowerCase()
+    
+    // Income keywords
+    const incomeKeywords = ['salary', 'wage', 'bonus', 'income', 'pay', 'dividend', 'interest', 'rent income', 'freelance', 'commission']
+    const isIncome = incomeKeywords.some(keyword => description.includes(keyword))
+    
+    if (isIncome) {
+      return {
+        ...transaction,
+        type: 'income',
+        category: 'Income',
+        subcategory: 'Salary'
+      }
+    }
+    
+    // Expense categorization
+    if (description.includes('grocery') || description.includes('food') || description.includes('restaurant') || description.includes('coffee')) {
+      return { ...transaction, type: 'expense', category: 'Living Expenses', subcategory: 'Food' }
+    }
+    
+    if (description.includes('rent') || description.includes('mortgage') || description.includes('utilities')) {
+      return { ...transaction, type: 'expense', category: 'Rental', subcategory: 'Housing' }
+    }
+    
+    if (description.includes('gas') || description.includes('uber') || description.includes('taxi') || description.includes('flight') || description.includes('hotel')) {
+      return { ...transaction, type: 'expense', category: 'Travel', subcategory: 'Transportation' }
+    }
+    
+    if (description.includes('movie') || description.includes('netflix') || description.includes('spotify') || description.includes('entertainment')) {
+      return { ...transaction, type: 'expense', category: 'Entertainment', subcategory: 'Leisure' }
+    }
+    
+    // Default to Other for unrecognized expenses
+    return {
+      ...transaction,
+      type: 'expense',
+      category: 'Other',
+      subcategory: 'Miscellaneous'
+    }
+  })
 }
 
 async function analyzeFinancialData(transactions: Transaction[], apiKey: string): Promise<FinancialMetrics> {
