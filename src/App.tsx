@@ -15,6 +15,7 @@ import { useAuth } from './hooks/useAuth';
 import Navigation from './components/Navigation';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
+import AIInsights from './components/AIInsights';
 import SavingsDashboard from './components/SavingsDashboard';
 import InvestmentsDashboard from './components/InvestmentsDashboard';
 import AddTransaction from './components/AddTransaction';
@@ -174,6 +175,8 @@ function App() {
     switch (activeView) {
       case 'dashboard':
         return <Dashboard transactions={transactions} budgets={budgets} />;
+      case 'ai-insights':
+        return <AIInsights transactions={transactions} />;
       case 'savings':
         return <SavingsDashboard transactions={transactions} />;
       case 'investments':

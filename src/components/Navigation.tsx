@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, PiggyBank, Plus, Target, History, TrendingUp, LogOut, User } from 'lucide-react';
+import { BarChart3, PiggyBank, Plus, Target, History, TrendingUp, LogOut, User, Brain } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -14,6 +14,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeView, onViewChange, user 
   
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'ai-insights', label: 'AI Insights', icon: Brain },
     { id: 'budget-settings', label: 'Goals', icon: Target },
     { id: 'savings', label: 'Savings', icon: PiggyBank },
     { id: 'investments', label: 'Investments', icon: TrendingUp },
