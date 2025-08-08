@@ -121,6 +121,42 @@ export const bulkInsertTransactions = async (transactions: Transaction[]): Promi
   return { data, error };
 };
 
+export const deleteTransactionsByMonth = async (month: string): Promise<{ error: any }> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: { message: 'User not authenticated' } };
+  }
+
+  // Delete transactions for the specific month (YYYY-MM format)
+  const startDate = `${month}-01`;
+  const endDate = `${month}-31`; // This will work for all months
+
+  const { error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('user_id', user.id)
+    .gte('date', startDate)
+    .lte('date', endDate);
+
+  return { error };
+};
+
+export const deleteAllTransactions = async (): Promise<{ error: any }> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: { message: 'User not authenticated' } };
+  }
+
+  const { error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('user_id', user.id);
+
+  return { error };
+};
+
 // Budget operations
 export const saveBudgets = async (budgets: Budget[]): Promise<{ data: any; error: any }> => {
   const { data: { user } } = await supabase.auth.getUser();

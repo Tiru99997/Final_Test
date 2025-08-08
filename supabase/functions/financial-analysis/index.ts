@@ -127,23 +127,26 @@ You are a financial categorization expert. Categorize the following transactions
 
 Available Categories:
 EXPENSE CATEGORIES:
-- Living Expenses (Grocery, Food, Restaurant, Coffee, Utilities, Electricity, Gas, Water, Internet, Phone, Household Items, Personal Care)
-- Rental (Rent, Mortgage, Property Tax, Home Insurance, HOA Fees, Maintenance, Repairs)
-- Travel (Flight, Hotel, Car Rental, Gas, Parking, Taxi, Uber, Train, Bus, Vacation)
-- Entertainment (Movies, Concerts, Sports Events, Netflix, Spotify, Gaming, Books, Hobbies)
-- Medical (Scans, Medical Insurance, Physiotherapy, Dental, Prescriptions, GP, Blood test, Hospital)
-- Personal Development (Courses, Gym, Training, Books, Workshops)
-- Shopping (Clothes, Electronics, Gifts, Personal Items, Home Decor, Furniture, Appliances)
-- Charity (Donation)
-- Savings (Long term saving, Short term saving)
-- Investments (Stocks, Bonds, Commodity, Crypto)
-- Other (Miscellaneous, Fees, Taxes, Insurance, Legal, Professional Services)
+- Living Expenses (Grocery, Maids, Fruits & Vegetables, Food, Household Items, Utilities, Electricity, Gas, Water, Internet, Phone, Personal Care, Toiletries, Laundry, Kitchen Supplies)
+- Rental (House Rent, Apartment Rent, Office Rent, Parking Rent, Storage Rent, Equipment Rent)
+- Debt (Car Loan, Home Loan, Personal Loan, Credit Card Payment, Student Loan, Business Loan, EMI, Interest Payment)
+- Education (School Fees, Tuition, College Fees, Training, Courses, Books, Educational Materials, Exam Fees, Coaching)
+- Healthcare (Medical Bills, Doctor Consultation, Medicine, Hospital, Dental, Health Insurance, Lab Tests, Surgery, Therapy)
+- Transportation (Fuel, Car Maintenance, Public Transport, Taxi, Uber, Bus, Train, Flight, Car Insurance, Vehicle Registration)
+- Entertainment (Movies, Dining Out, Vacation, Sports, Hobbies, Subscriptions, Netflix, Spotify, Gaming, Books)
+- Shopping (Clothes, Electronics, Gifts, Jewelry, Furniture, Home Decor, Appliances, Personal Items)
+- Insurance (Life Insurance, Health Insurance, Car Insurance, Home Insurance, Travel Insurance, Professional Insurance)
+- Taxes (Income Tax, Property Tax, GST, Professional Tax, Vehicle Tax, Other Taxes)
+- Charity (Donations, Religious Contributions, NGO Support, Community Support)
+- Savings (SIPs, Fixed Deposits, Recurring Deposits, Emergency Fund, Investment Savings, Retirement Savings)
+- Other (Miscellaneous, Bank Charges, Legal Fees, Professional Services, Repairs, Maintenance)
 
 INCOME CATEGORIES:
-- Income (Salary, Wages, Bonus, Overtime, Commission, Freelance, Business Income, Side Hustle)
-- Rental Income (Property Rent, Room Rent, Airbnb, Parking Rent)
-- Investment Income (Dividends, Interest, Capital Gains, Crypto Gains)
-- Other Income (Gifts, Refunds, Cashback, Lottery, Insurance Claims)
+- Employment Income (Salary, Wages, Bonus, Overtime, Commission, Tips, Freelance Income, Consulting Income)
+- Investment Income (Dividends, Interest, Capital Gains, Mutual Fund Returns, Stock Profits, Bond Interest, Crypto Gains)
+- Rental Income (Property Rent, Room Rent, Commercial Rent, Parking Rent, Equipment Rental, Airbnb Income)
+- Business Income (Business Profits, Partnership Income, Royalties, Licensing, Product Sales, Service Income)
+- Other Income (Gifts, Inheritance, Insurance Claims, Refunds, Cashback, Prize Money, Government Benefits, Pension)
 
 Transactions to categorize:
 ${batch.map(t => `- ${t.description} ($${t.amount}) [${t.type}]`).join('\n')}
@@ -151,9 +154,13 @@ ${batch.map(t => `- ${t.description} ($${t.amount}) [${t.type}]`).join('\n')}
 Rules:
 1. Determine if each transaction is "income" or "expense" based on the description
 2. Choose the most appropriate category and subcategory
-3. Group food-related expenses under "Living Expenses"
-4. Group housing costs under "Rental"
-5. Group transportation under "Travel"
+3. Salary, dividend, rental income -> Employment Income, Investment Income, Rental Income respectively
+4. House rent -> Rental category
+5. Grocery, maids, fruits & vegetables -> Living Expenses
+6. Car loan and home loan -> Debt category
+7. School fees and tuition -> Education category
+8. SIPs should be categorized as Savings (this represents income minus all expenses)
+9. Use specific subcategories that match the transaction description closely
 
 Return a JSON array with the same order, each containing:
 {
@@ -233,37 +240,58 @@ function categorizeTransactionsFallback(transactions: Transaction[]): Transactio
     const isIncome = incomeKeywords.some(keyword => description.includes(keyword))
     
     if (isIncome) {
+      if (description.includes('salary') || description.includes('wage') || description.includes('bonus')) {
+        return { ...transaction, type: 'income', category: 'Employment Income', subcategory: 'Salary' }
+      }
+      if (description.includes('dividend') || description.includes('interest')) {
+        return { ...transaction, type: 'income', category: 'Investment Income', subcategory: 'Dividends' }
+      }
+      if (description.includes('rent income') || description.includes('rental income')) {
+        return { ...transaction, type: 'income', category: 'Rental Income', subcategory: 'Property Rent' }
+      }
       return {
         ...transaction,
         type: 'income',
-        category: 'Fixed Income',
+        category: 'Employment Income',
         subcategory: 'Salary'
       }
     }
     
     // Expense categorization
-    if (description.includes('grocery') || description.includes('food') || description.includes('restaurant') || description.includes('coffee') || description.includes('lunch') || description.includes('dinner')) {
+    if (description.includes('grocery') || description.includes('maids') || description.includes('fruits') || description.includes('vegetables') || description.includes('food')) {
       return { ...transaction, type: 'expense', category: 'Living Expenses', subcategory: 'Grocery' }
     }
     
-    if (description.includes('rent') || description.includes('mortgage') || description.includes('utilities')) {
-      return { ...transaction, type: 'expense', category: 'Bills', subcategory: 'Rent' }
+    if (description.includes('house rent') || description.includes('rent')) {
+      return { ...transaction, type: 'expense', category: 'Rental', subcategory: 'House Rent' }
+    }
+    
+    if (description.includes('car loan') || description.includes('home loan') || description.includes('loan') || description.includes('emi')) {
+      return { ...transaction, type: 'expense', category: 'Debt', subcategory: 'Car Loan' }
+    }
+    
+    if (description.includes('school fees') || description.includes('tuition') || description.includes('education')) {
+      return { ...transaction, type: 'expense', category: 'Education', subcategory: 'School Fees' }
+    }
+    
+    if (description.includes('sip') || description.includes('sips')) {
+      return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'SIPs' }
     }
     
     if (description.includes('gas') || description.includes('uber') || description.includes('taxi') || description.includes('bus')) {
-      return { ...transaction, type: 'expense', category: 'Transport', subcategory: 'Taxi' }
+      return { ...transaction, type: 'expense', category: 'Transportation', subcategory: 'Taxi' }
     }
     
-    if (description.includes('movie') || description.includes('netflix') || description.includes('spotify') || description.includes('entertainment') || description.includes('vacation') || description.includes('holiday')) {
-      return { ...transaction, type: 'expense', category: 'Leisure', subcategory: 'Entertainment' }
+    if (description.includes('movie') || description.includes('netflix') || description.includes('spotify') || description.includes('entertainment') || description.includes('vacation') || description.includes('holiday') || description.includes('restaurant') || description.includes('dining')) {
+      return { ...transaction, type: 'expense', category: 'Entertainment', subcategory: 'Movies' }
     }
     
-    if (description.includes('saving') || description.includes('investment') || description.includes('401k') || description.includes('retirement')) {
-      return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'Long term saving' }
+    if (description.includes('medical') || description.includes('doctor') || description.includes('hospital') || description.includes('pharmacy') || description.includes('medicine')) {
+      return { ...transaction, type: 'expense', category: 'Healthcare', subcategory: 'Medical Bills' }
     }
     
-    if (description.includes('medical') || description.includes('doctor') || description.includes('hospital') || description.includes('pharmacy')) {
-      return { ...transaction, type: 'expense', category: 'Medical', subcategory: 'GP' }
+    if (description.includes('utilities') || description.includes('electricity') || description.includes('water') || description.includes('gas bill')) {
+      return { ...transaction, type: 'expense', category: 'Living Expenses', subcategory: 'Utilities' }
     }
     
     // Default to Other for unrecognized expenses

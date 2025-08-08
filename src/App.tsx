@@ -232,6 +232,7 @@ function App() {
             transactions={transactions}
             onDeleteTransaction={handleDeleteTransaction}
             onEditTransaction={handleEditTransaction}
+            onBulkDelete={loadData}
           />
         );
       case 'budget-settings':

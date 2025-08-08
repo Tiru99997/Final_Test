@@ -3,18 +3,21 @@ import { Transaction } from '../types';
 import { format } from 'date-fns';
 import { formatCurrency } from '../utils/calculations';
 import { getCategoryColor } from '../data/categories';
-import { Search, Filter, Trash2, Edit3 } from 'lucide-react';
+import { Search, Filter, Trash2, Edit3, AlertTriangle } from 'lucide-react';
+import { deleteTransactionsByMonth, deleteAllTransactions } from '../utils/supabaseStorage';
 
 interface TransactionHistoryProps {
   transactions: Transaction[];
   onDeleteTransaction: (id: string) => void;
   onEditTransaction: (transaction: Transaction) => void;
+  onBulkDelete?: () => void;
 }
 
 const TransactionHistory: React.FC<TransactionHistoryProps> = ({
   transactions,
   onDeleteTransaction,
-  onEditTransaction
+  onEditTransaction,
+  onBulkDelete
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<'all' | 'income' | 'expense'>('all');
@@ -24,11 +27,22 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'category'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteType, setDeleteType] = useState<'month' | 'all'>('month');
+  const [selectedDeleteMonth, setSelectedDeleteMonth] = useState('');
 
   // Get unique categories from transactions
   const categories = useMemo(() => {
     const cats = Array.from(new Set(transactions.map(t => t.category)));
     return cats.sort();
+  }, [transactions]);
+
+  // Get unique months from transactions
+  const availableMonths = useMemo(() => {
+    const months = Array.from(new Set(
+      transactions.map(t => format(t.date, 'yyyy-MM'))
+    )).sort().reverse();
+    return months;
   }, [transactions]);
 
   // Filter and sort transactions
@@ -86,6 +100,51 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
     setEditingTransaction(null);
   };
 
+  const handleDeleteByMonth = async () => {
+    if (!selectedDeleteMonth) {
+      alert('Please select a month to delete');
+      return;
+    }
+
+    const monthName = format(new Date(selectedDeleteMonth + '-01'), 'MMMM yyyy');
+    if (!window.confirm(`Are you sure you want to delete ALL transactions for ${monthName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    const { error } = await deleteTransactionsByMonth(selectedDeleteMonth);
+    if (error) {
+      console.error('Error deleting transactions:', error);
+      alert('Failed to delete transactions. Please try again.');
+      return;
+    }
+
+    alert(`Successfully deleted all transactions for ${monthName}`);
+    setShowDeleteModal(false);
+    setSelectedDeleteMonth('');
+    if (onBulkDelete) onBulkDelete();
+  };
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL transactions? This action cannot be undone and will permanently remove all your transaction history.')) {
+      return;
+    }
+
+    if (!window.confirm('This is your final warning. ALL transaction data will be permanently deleted. Are you absolutely sure?')) {
+      return;
+    }
+
+    const { error } = await deleteAllTransactions();
+    if (error) {
+      console.error('Error deleting all transactions:', error);
+      alert('Failed to delete transactions. Please try again.');
+      return;
+    }
+
+    alert('Successfully deleted all transactions');
+    setShowDeleteModal(false);
+    if (onBulkDelete) onBulkDelete();
+  };
+
   const totalAmount = filteredTransactions.reduce((sum, t) => {
     return t.type === 'income' ? sum + t.amount : sum - t.amount;
   }, 0);
@@ -101,7 +160,14 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
               {filteredTransactions.length} transactions found
             </p>
           </div>
-          <div className="mt-4 md:mt-0">
+          <div className="mt-4 md:mt-0 flex items-center space-x-4">
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Delete History</span>
+            </button>
             <div className={`text-lg font-bold ${totalAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               Net: {formatCurrency(totalAmount)}
             </div>
@@ -314,6 +380,87 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
               </button>
               <button
                 onClick={handleCancelEdit}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center space-x-2 mb-4">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+              <h3 className="text-lg font-semibold text-gray-800">Delete Transaction History</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="deleteType"
+                    value="month"
+                    checked={deleteType === 'month'}
+                    onChange={(e) => setDeleteType(e.target.value as 'month')}
+                    className="text-red-600"
+                  />
+                  <span>Delete by Month</span>
+                </label>
+                {deleteType === 'month' && (
+                  <select
+                    value={selectedDeleteMonth}
+                    onChange={(e) => setSelectedDeleteMonth(e.target.value)}
+                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="">Select month...</option>
+                    {availableMonths.map(month => (
+                      <option key={month} value={month}>
+                        {format(new Date(month + '-01'), 'MMMM yyyy')}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              
+              <div>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="deleteType"
+                    value="all"
+                    checked={deleteType === 'all'}
+                    onChange={(e) => setDeleteType(e.target.value as 'all')}
+                    className="text-red-600"
+                  />
+                  <span className="text-red-600 font-medium">Delete ALL Transactions</span>
+                </label>
+              </div>
+            </div>
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
+              <p className="text-sm text-red-800">
+                <strong>Warning:</strong> This action cannot be undone. All selected transaction data will be permanently deleted.
+              </p>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={deleteType === 'month' ? handleDeleteByMonth : handleDeleteAll}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors font-medium"
+              >
+                Delete {deleteType === 'month' ? 'Month' : 'All'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setSelectedDeleteMonth('');
+                  setDeleteType('month');
+                }}
                 className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors"
               >
                 Cancel
