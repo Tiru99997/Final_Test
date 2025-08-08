@@ -413,6 +413,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 scales: {
                   y: { 
                     beginAtZero: true,
+                   suggestedMin: 0,
+                   suggestedMax: Math.max(
+                     Math.max(...incomeExpenseLineData.datasets[0].data) * 1.1,
+                     Math.max(...incomeExpenseLineData.datasets[1].data) * 1.1
+                   ),
                     ticks: {
                       callback: function(value) {
                         return formatCurrency(value as number);
@@ -467,34 +472,98 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         </div>
       </div>
 
-      {/* P&L Summary Section */}
+      {/* Monthly P&L Summary */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Monthly P&L Summary (Last 6 Months)</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-6">Monthly P&L Summary</h3>
         {monthsWithData.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Month</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">Income</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">Expenses</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">Net Surplus</th>
+                <tr className="border-b-2 border-gray-300">
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 bg-gray-50">Particulars</th>
+                  {monthsWithData.slice(0, 6).map((monthData, index) => (
+                    <th key={index} className="text-center py-3 px-3 font-semibold text-gray-700 bg-gray-50 min-w-[120px]">
+                      {monthData.month}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {monthsWithData.map((monthData, index) => (
-                  <tr key={index} className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 text-gray-800 font-medium">{monthData.month}</td>
-                    <td className="py-3 px-4 text-right text-green-600 font-medium">
-                      {formatCurrency(monthData.income)}
+                {/* Income Section */}
+                <tr className="border-b border-gray-200 bg-green-50">
+                  <td className="py-2 px-4 font-semibold text-green-800">INCOME</td>
+                  {monthsWithData.slice(0, 6).map((_, index) => (
+                    <td key={index} className="py-2 px-3"></td>
+                  ))}
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="py-2 px-4 pl-8 text-gray-700">Total Income</td>
+                  {monthsWithData.slice(0, 6).map((monthData, index) => (
+                    <td key={index} className="py-2 px-3 text-center text-green-600 font-medium">
+                      {monthData.income > 0 ? formatCurrency(monthData.income) : '-'}
                     </td>
-                    <td className="py-3 px-4 text-right text-red-600 font-medium">
-                      {formatCurrency(monthData.expenses)}
+                  ))}
+                </tr>
+                
+                {/* Expenses Section */}
+                <tr className="border-b border-gray-200 bg-red-50">
+                  <td className="py-2 px-4 font-semibold text-red-800">EXPENSES</td>
+                  {monthsWithData.slice(0, 6).map((_, index) => (
+                    <td key={index} className="py-2 px-3"></td>
+                  ))}
+                </tr>
+                <tr className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="py-2 px-4 pl-8 text-gray-700">Total Expenses</td>
+                  {monthsWithData.slice(0, 6).map((monthData, index) => (
+                    <td key={index} className="py-2 px-3 text-center text-red-600 font-medium">
+                      {monthData.expenses > 0 ? formatCurrency(monthData.expenses) : '-'}
                     </td>
-                    <td className={`py-3 px-4 text-right font-bold ${
-                      (monthData.income - monthData.expenses) >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {formatCurrency(monthData.income - monthData.expenses)}
+                  ))}
+                </tr>
+                
+                {/* Net Surplus/Deficit */}
+                <tr className="border-t-2 border-gray-300 bg-blue-50">
+                  <td className="py-3 px-4 font-bold text-blue-800">NET SURPLUS / (DEFICIT)</td>
+                  {monthsWithData.slice(0, 6).map((monthData, index) => {
+                    const netAmount = monthData.income - monthData.expenses;
+                    return (
+                      <td key={index} className={`py-3 px-3 text-center font-bold ${
+                        netAmount >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {netAmount !== 0 ? formatCurrency(netAmount) : '-'}
+                      </td>
+                    );
+                  })}
+                </tr>
+                
+                {/* Savings Rate */}
+                <tr className="border-b border-gray-200 hover:bg-gray-50">
+                  <td className="py-2 px-4 pl-8 text-gray-700 font-medium">Savings Rate</td>
+                  {monthsWithData.slice(0, 6).map((monthData, index) => {
+                    const savingsRate = monthData.income > 0 ? ((monthData.income - monthData.expenses) / monthData.income) * 100 : 0;
+                    return (
+                      <td key={index} className={`py-2 px-3 text-center font-medium ${
+                        savingsRate >= 15 ? 'text-green-600' : savingsRate >= 10 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {monthData.income > 0 ? `${savingsRate.toFixed(1)}%` : '-'}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            No transaction data available
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
                     </td>
                   </tr>
                 ))}
