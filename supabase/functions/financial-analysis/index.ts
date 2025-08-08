@@ -187,7 +187,8 @@ Only return the JSON array, no other text.`
             categorizedTransactions[transactionIndex] = {
               ...categorizedTransactions[transactionIndex],
               category: categorizations[index].category,
-              subcategory: categorizations[index].subcategory
+              subcategory: categorizations[index].subcategory,
+              type: categorizations[index].type || categorizedTransactions[transactionIndex].type
             }
           }
         }
