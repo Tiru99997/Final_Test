@@ -163,7 +163,7 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navigation activeView={activeView} onViewChange={setActiveView} />
+        <Navigation activeView={activeView} onViewChange={setActiveView} user={user} />
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
         </div>
