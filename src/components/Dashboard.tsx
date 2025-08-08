@@ -43,6 +43,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'monthly' | 'cumulative'>('monthly');
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [insights, setInsights] = useState<string[]>([]);
   
@@ -61,14 +62,27 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
     month.getFullYear() === selectedMonth.getFullYear()
   );
 
+  // Filter transactions based on view mode
+  const getFilteredTransactions = () => {
+    if (viewMode === 'cumulative') {
+      return transactions;
+    } else {
+      const monthStart = startOfMonth(selectedMonth);
+      const monthEnd = endOfMonth(selectedMonth);
+      return transactions.filter(t => t.date >= monthStart && t.date <= monthEnd);
+    }
+  };
+
+  const filteredTransactions = getFilteredTransactions();
+
   const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const index = parseInt(event.target.value);
     setSelectedMonth(monthOptions[index]);
   };
 
   const currentMonth = selectedMonth;
-  const monthlyData = calculateMonthlyTotals(transactions, budgets, currentMonth);
-  const categoryTotals = calculateCategoryTotals(transactions, currentMonth);
+  const monthlyData = calculateMonthlyTotals(filteredTransactions, budgets, currentMonth);
+  const categoryTotals = calculateCategoryTotals(filteredTransactions, currentMonth);
 
   const handleExportExcel = () => {
     exportMonthlyReportToExcel(transactions, budgets, selectedMonth);
@@ -125,10 +139,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   };
 
   // Calculate KPIs
-  const calculateKPIs = () => {
+  const calculateKPIs = (transactionsToUse: Transaction[]) => {
     // Net worth (total savings accumulated over time)
-    const allSavingsTransactions = transactions.filter(t => {
-      if (t.type !== 'expense' || t.date > endOfMonth(selectedMonth)) return false;
+    const allSavingsTransactions = transactionsToUse.filter(t => {
+      if (t.type !== 'expense') return false;
+      
+      // For monthly view, only include transactions up to the selected month
+      if (viewMode === 'monthly' && t.date > endOfMonth(selectedMonth)) return false;
       
       // Check if it's in the Savings category
       if (t.category === 'Savings') return true;
@@ -145,19 +162,22 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
     const netWorth = allSavingsTransactions.reduce((sum, t) => sum + t.amount, 0);
 
     // Calculate monthly averages
-    const monthsWithData = new Set(transactions.map(t => format(t.date, 'yyyy-MM')));
-    const monthCount = monthsWithData.size || 1;
+    let monthCount = 1;
+    if (viewMode === 'cumulative') {
+      const monthsWithData = new Set(transactionsToUse.map(t => format(t.date, 'yyyy-MM')));
+      monthCount = monthsWithData.size || 1;
+    }
 
-    const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const totalIncome = transactionsToUse.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = transactionsToUse.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
     const totalSavings = allSavingsTransactions.reduce((sum, t) => sum + t.amount, 0);
 
-    const avgMonthlyIncome = totalIncome / monthCount;
-    const avgMonthlyExpense = totalExpenses / monthCount;
+    const avgMonthlyIncome = viewMode === 'cumulative' ? totalIncome / monthCount : totalIncome;
+    const avgMonthlyExpense = viewMode === 'cumulative' ? totalExpenses / monthCount : totalExpenses;
     const savingsRatio = totalIncome > 0 ? (totalSavings / totalIncome) * 100 : 0;
 
     // Calculate debt to income ratio
-    const debtTransactions = transactions.filter(t => t.type === 'expense' && t.category === 'Debt');
+    const debtTransactions = transactionsToUse.filter(t => t.type === 'expense' && t.category === 'Debt');
     const totalDebt = debtTransactions.reduce((sum, t) => sum + t.amount, 0);
     const debtToIncomeRatio = totalIncome > 0 ? (totalDebt / totalIncome) * 100 : 0;
 
@@ -170,14 +190,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
     };
   };
 
-  const kpis = calculateKPIs();
+  const kpis = calculateKPIs(filteredTransactions);
 
   // Auto-generate insights when transactions change
   useEffect(() => {
     if (transactions.length > 0 && !loadingInsights && insights.length === 0) {
       generateInsights();
     }
-  }, [transactions]);
+  }, [transactions, viewMode, selectedMonth]);
 
   // Summary cards calculations
   const incomeSurplus = monthlyData.income - monthlyData.expenses;
@@ -310,10 +330,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   const { monthsData, categoryBreakdown } = getCategoryBreakdown();
 
   // Current month transactions for pie charts
-  const currentMonthTransactions = transactions.filter(t => {
+  const currentMonthTransactions = filteredTransactions.filter(t => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    return t.date >= monthStart && t.date <= monthEnd;
+    return viewMode === 'cumulative' || (t.date >= monthStart && t.date <= monthEnd);
   });
 
   const categoryBudgets = budgets.filter(b => {
@@ -330,12 +350,38 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Financial Dashboard</h1>
             <p className="text-gray-600 mt-1">
-              {format(selectedMonth, 'MMMM yyyy')} Overview - Select month below to analyze
+              {viewMode === 'cumulative' ? 'Cumulative Overview' : `${format(selectedMonth, 'MMMM yyyy')} Overview`}
+              {viewMode === 'monthly' && ' - Select month below to analyze'}
             </p>
+          </div>
+          <div className="mt-4 sm:mt-0">
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('monthly')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'monthly'
+                    ? 'bg-white text-green-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setViewMode('cumulative')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'cumulative'
+                    ? 'bg-white text-green-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Cumulative
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="mt-8 pb-12 flex justify-center">
+        {viewMode === 'monthly' && (
+          <div className="mt-8 pb-12 flex justify-center">
           <div className="w-3/4 relative">
             <input
               type="range"
@@ -363,7 +409,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
               ))}
             </div>
           </div>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -371,7 +418,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Net Worth</p>
+              <p className="text-sm font-medium text-gray-600">
+                {viewMode === 'cumulative' ? 'Net Worth (Total)' : 'Net Worth (Month)'}
+              </p>
               <p className="text-2xl font-bold text-blue-600">
                 {formatCurrency(kpis.netWorth)}
               </p>
@@ -383,7 +432,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Avg Monthly Income</p>
+              <p className="text-sm font-medium text-gray-600">
+                {viewMode === 'cumulative' ? 'Avg Monthly Income' : 'Monthly Income'}
+              </p>
               <p className="text-2xl font-bold text-green-600">
                 {formatCurrency(kpis.avgMonthlyIncome)}
               </p>
@@ -395,7 +446,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Avg Monthly Expense</p>
+              <p className="text-sm font-medium text-gray-600">
+                {viewMode === 'cumulative' ? 'Avg Monthly Expense' : 'Monthly Expense'}
+              </p>
               <p className="text-2xl font-bold text-red-600">
                 {formatCurrency(kpis.avgMonthlyExpense)}
               </p>
