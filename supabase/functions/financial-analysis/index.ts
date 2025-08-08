@@ -86,6 +86,16 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
+    } else if (action === 'categorize-savings') {
+      // Categorize savings transactions
+      const categorizedSavings = await categorizeSavingsTransactions(transactions, openaiApiKey)
+      
+      return new Response(
+        JSON.stringify({ categorizedSavings }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
     return new Response(
