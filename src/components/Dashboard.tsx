@@ -173,12 +173,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         label: 'Income',
         data: monthlyChartData.map(data => data.income),
         borderColor: '#22C55E',
-        backgroundColor: 'rgba(34, 197, 94, 0.2)',
-        fill: true,
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        fill: false,
         tension: 0.4,
-        pointRadius: 6,
-        pointHoverRadius: 8,
-        borderWidth: 3,
+        pointRadius: 8,
+        pointHoverRadius: 10,
+        borderWidth: 4,
+        pointBackgroundColor: '#22C55E',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
       },
       {
         label: 'Expenses (excluding Savings)',
@@ -208,13 +211,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
           
           return nonSavingsExpenses.reduce((sum, t) => sum + t.amount, 0);
         }),
-        borderColor: '#EF4444',
-        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+        borderColor: '#DC2626',
+        backgroundColor: 'rgba(220, 38, 38, 0.1)',
         fill: false,
         tension: 0.4,
-        pointRadius: 6,
-        pointHoverRadius: 8,
-        borderWidth: 3,
+        pointRadius: 8,
+        pointHoverRadius: 10,
+        borderWidth: 4,
+        pointBackgroundColor: '#DC2626',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
       }
     ]
   };
@@ -558,17 +564,26 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                   ))}
                 </tr>
                 
-                {/* Expenses Section */}
+                {/* Expenses Section (Excluding Savings) */}
                 <tr className="border-b border-gray-200 bg-red-50">
-                  <td className="py-2 px-4 font-semibold text-red-800">EXPENSES</td>
+                  <td className="py-2 px-4 font-semibold text-red-800">EXPENSES (Excluding Savings)</td>
                   {monthsData.slice(0, 6).map((_, index) => (
                     <td key={index} className="py-2 px-3"></td>
                   ))}
                 </tr>
                 
-                {/* Expense Categories */}
+                {/* Expense Categories (Excluding Savings) */}
                 {Object.values(categoryBreakdown)
-                  .filter(item => item.type === 'expense')
+                  .filter(item => {
+                    if (item.type !== 'expense') return false;
+                    // Exclude savings categories
+                    if (item.category === 'Savings') return false;
+                    // Exclude investment-related categories
+                    const investmentCategories = ['SIP', 'Mutual Fund', 'Stocks', 'FD', 'RD', 'AIF'];
+                    return !investmentCategories.some(keyword => 
+                      item.category.toLowerCase().includes(keyword.toLowerCase())
+                    );
+                  })
                   .sort((a, b) => {
                     const aTotal = Object.values(a.months).reduce((sum, val) => sum + val, 0);
                     const bTotal = Object.values(b.months).reduce((sum, val) => sum + val, 0);
@@ -586,27 +601,35 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                   ))}
                 
                 <tr className="border-b border-gray-200 bg-red-100">
-                  <td className="py-2 px-4 pl-4 font-semibold text-red-800">Total Expenses</td>
+                  <td className="py-2 px-4 pl-4 font-semibold text-red-800">Total Expenses (Excluding Savings)</td>
                   {monthsData.slice(0, 6).map((monthData, index) => (
                     <td key={index} className="py-2 px-3 text-center text-red-600 font-medium">
-                      {monthData.expenses > 0 ? formatCurrency(monthData.expenses) : '-'}
+                      {(() => {
+                        const monthDate = new Date(monthData.month + ' 01, 2024');
+                        const monthStart = startOfMonth(monthDate);
+                        const monthEnd = endOfMonth(monthDate);
+                        
+                        const monthTransactions = transactions.filter(t => 
+                          t.date >= monthStart && t.date <= monthEnd && t.type === 'expense'
+                        );
+                        
+                        const nonSavingsExpenses = monthTransactions.filter(t => {
+                          if (t.category === 'Savings') return false;
+                          
+                          const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+                          const description = (t.description || '').toLowerCase();
+                          const subcategory = (t.subcategory || '').toLowerCase();
+                          
+                          return !investmentKeywords.some(keyword => 
+                            description.includes(keyword) || subcategory.includes(keyword)
+                          );
+                        });
+                        
+                        const totalNonSavingsExpenses = nonSavingsExpenses.reduce((sum, t) => sum + t.amount, 0);
+                        return totalNonSavingsExpenses > 0 ? formatCurrency(totalNonSavingsExpenses) : '-';
+                      })()}
                     </td>
                   ))}
-                </tr>
-                
-                {/* Net Surplus/Deficit */}
-                <tr className="border-t-2 border-gray-300 bg-blue-50">
-                  <td className="py-3 px-4 font-bold text-blue-800">NET SURPLUS / (DEFICIT)</td>
-                  {monthsData.slice(0, 6).map((monthData, index) => {
-                    const netAmount = monthData.income - monthData.expenses;
-                    return (
-                      <td key={index} className={`py-3 px-3 text-center font-bold ${
-                        netAmount >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {netAmount !== 0 ? formatCurrency(netAmount) : '-'}
-                      </td>
-                    );
-                  })}
                 </tr>
                 
                 {/* Savings Breakdown */}
@@ -655,6 +678,43 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                     return (
                       <td key={index} className="py-2 px-3 text-center text-purple-600 font-medium">
                         {savingsAmount > 0 ? formatCurrency(savingsAmount) : '-'}
+                      </td>
+                    );
+                  })}
+                </tr>
+                
+                {/* Net Surplus/Deficit (Income - Expenses excluding Savings) */}
+                <tr className="border-t-2 border-gray-300 bg-blue-50">
+                  <td className="py-3 px-4 font-bold text-blue-800">NET SURPLUS / (DEFICIT)</td>
+                  {monthsData.slice(0, 6).map((monthData, index) => {
+                    const monthDate = new Date(monthData.month + ' 01, 2024');
+                    const monthStart = startOfMonth(monthDate);
+                    const monthEnd = endOfMonth(monthDate);
+                    
+                    const monthTransactions = transactions.filter(t => 
+                      t.date >= monthStart && t.date <= monthEnd && t.type === 'expense'
+                    );
+                    
+                    const nonSavingsExpenses = monthTransactions.filter(t => {
+                      if (t.category === 'Savings') return false;
+                      
+                      const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+                      const description = (t.description || '').toLowerCase();
+                      const subcategory = (t.subcategory || '').toLowerCase();
+                      
+                      return !investmentKeywords.some(keyword => 
+                        description.includes(keyword) || subcategory.includes(keyword)
+                      );
+                    });
+                    
+                    const totalNonSavingsExpenses = nonSavingsExpenses.reduce((sum, t) => sum + t.amount, 0);
+                    const netAmount = monthData.income - totalNonSavingsExpenses;
+                    
+                    return (
+                      <td key={index} className={`py-3 px-3 text-center font-bold ${
+                        netAmount >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {netAmount !== 0 ? formatCurrency(netAmount) : '-'}
                       </td>
                     );
                   })}
