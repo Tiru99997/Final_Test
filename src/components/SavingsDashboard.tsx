@@ -161,14 +161,25 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.warn('Supabase configuration not available, using fallback categorization');
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseUrl.startsWith('http')) {
+      console.warn('Supabase configuration not available or invalid, using fallback categorization');
       useFallbackCategorization();
+      setCategorizingSavings(false);
       return;
     }
     
     try {
       const apiUrl = `${supabaseUrl}/functions/v1/financial-analysis`;
+      
+      // Validate URL format before making request
+      try {
+        new URL(apiUrl);
+      } catch (urlError) {
+        console.error('Invalid Supabase URL format:', apiUrl);
+        useFallbackCategorization();
+        setCategorizingSavings(false);
+        return;
+      }
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -189,7 +200,10 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       });
 
       if (!response.ok) {
-        throw new Error(`Savings categorization failed: ${response.status}`);
+        console.error(`Savings categorization failed: ${response.status}`);
+        useFallbackCategorization();
+        setCategorizingSavings(false);
+        return;
       }
 
       const data = await response.json();
