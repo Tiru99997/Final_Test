@@ -25,11 +25,11 @@ export const calculateMonthlyTotals = (
   const monthlyBudgets = budgets.filter(b => b.month === monthStr);
   
   const budgetedIncome = monthlyBudgets
-    .filter(b => ['Fixed Income', 'Variable Income'].includes(b.category))
+    .filter(b => ['Salary', 'Dividend', 'Rental Income', 'Business', 'Other'].includes(b.category))
     .reduce((sum, b) => sum + b.amount, 0);
 
   const budgetedExpenses = monthlyBudgets
-    .filter(b => !['Fixed Income', 'Variable Income'].includes(b.category))
+    .filter(b => !['Salary', 'Dividend', 'Rental Income', 'Business', 'Other'].includes(b.category))
     .reduce((sum, b) => sum + b.amount, 0);
 
   return {

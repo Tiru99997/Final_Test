@@ -368,8 +368,8 @@ export const generateSampleBudgets = () => {
     
     // Income budgets
     budgets.push(
-      { category: 'Employment Income', amount: Math.round(50000 * budgetVariation), month: monthStr },
-      { category: 'Investment Income', amount: Math.round(3000 * budgetVariation), month: monthStr },
+      { category: 'Salary', amount: Math.round(50000 * budgetVariation), month: monthStr },
+      { category: 'Dividend', amount: Math.round(3000 * budgetVariation), month: monthStr },
       { category: 'Rental Income', amount: Math.round(8000 * budgetVariation), month: monthStr }
     );
     
