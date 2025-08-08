@@ -134,42 +134,18 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
       skipEmptyLines: true,
       transformHeader: (header) => {
         // Normalize header names to handle variations
-        return header.trim().toLowerCase();
+        return header.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
       },
       complete: async (results) => {
         const importedTransactions: Transaction[] = [];
         
         results.data.forEach((row: any) => {
           // Handle various possible column names
-          // More flexible header matching
-          let date, amount, expenseDetail;
-          
-          // Find date column
-          Object.keys(row).forEach(key => {
-            const normalizedKey = key.toLowerCase().replace(/[^a-z]/g, '');
-            if (normalizedKey === 'date' || normalizedKey === 'dt') {
-              date = row[key];
-            }
-          });
-          
-          // Find amount column
-          Object.keys(row).forEach(key => {
-            const normalizedKey = key.toLowerCase().replace(/[^a-z]/g, '');
-            if (normalizedKey === 'amount' || normalizedKey === 'amt' || normalizedKey === 'value' || normalizedKey === 'price') {
-              amount = row[key];
-            }
-          });
-          
-          // Find expense detail column
-          Object.keys(row).forEach(key => {
-            const normalizedKey = key.toLowerCase().replace(/[^a-z]/g, '');
-            if (normalizedKey === 'expensedetail' || normalizedKey === 'expense' || 
-                normalizedKey === 'description' || normalizedKey === 'detail' || 
-                normalizedKey === 'particulars' || normalizedKey === 'narration' ||
-                normalizedKey === 'transaction' || normalizedKey === 'item') {
-              expenseDetail = row[key];
-            }
-          });
+          const date = row.date || row.Date || row.DATE;
+          const amount = row.amount || row.Amount || row.AMOUNT;
+          const expenseDetail = row.expensedetail || row.expenseDetail || row.ExpenseDetail || 
+                               row.expense_detail || row.description || row.Description || 
+                               row.DESCRIPTION || row.detail || row.Detail || row.DETAIL;
           
           if (date && amount && expenseDetail) {
             // Parse amount - remove commas, currency symbols, and handle various formats
@@ -186,44 +162,20 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
             let parsedDate = new Date();
             if (typeof date === 'string') {
               // Try different date formats
-              // Handle date parsing to avoid timezone issues
-              let dateStr = date.trim();
+              const dateFormats = [
+                date, // Original format
+                date.replace(/\//g, '-'), // Replace / with -
+                date.replace(/\./g, '-'), // Replace . with -
+              ];
               
-              // Convert various formats to YYYY-MM-DD
-              if (dateStr.includes('/')) {
-                // Handle MM/DD/YYYY or DD/MM/YYYY formats
-                const parts = dateStr.split('/');
-                if (parts.length === 3) {
-                  // Assume MM/DD/YYYY format (most common in CSV exports)
-                  const month = parts[0].padStart(2, '0');
-                  const day = parts[1].padStart(2, '0');
-                  const year = parts[2];
-                  dateStr = `${year}-${month}-${day}`;
+              for (const dateFormat of dateFormats) {
+                const testDate = new Date(dateFormat);
+                if (!isNaN(testDate.getTime())) {
+                  parsedDate = testDate;
+                  break;
                 }
-              } else if (dateStr.includes('.')) {
-                // Handle DD.MM.YYYY format
-                const parts = dateStr.split('.');
-                if (parts.length === 3) {
-                  const day = parts[0].padStart(2, '0');
-                  const month = parts[1].padStart(2, '0');
-                  const year = parts[2];
-                  dateStr = `${year}-${month}-${day}`;
-                }
-              }
-              
-              // Create date using local timezone to avoid day shift
-              const dateParts = dateStr.split('-');
-              if (dateParts.length === 3) {
-                const year = parseInt(dateParts[0]);
-                const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed
-                const day = parseInt(dateParts[2]);
-                parsedDate = new Date(year, month, day);
-              } else {
-                // Fallback to direct parsing
-                parsedDate = new Date(dateStr);
               }
             } else {
-              // If date is already a Date object or number
               parsedDate = new Date(date);
             }
             
