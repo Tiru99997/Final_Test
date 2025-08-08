@@ -43,27 +43,85 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
       return;
     }
 
+    // Call AI categorization first
+    categorizeAndAddTransaction();
+  };
+
+  const categorizeAndAddTransaction = async () => {
     try {
-      const transaction: Transaction = {
+      const tempTransaction = {
         id: generateId(),
-        date: new Date(formData.date),
-        category: 'Uncategorized',
-        subcategory: 'Uncategorized',
-        amount: parseFloat(formData.amount),
+        date: formData.date,
         description: formData.expenseDetail,
-        type: 'expense',
+        amount: parseFloat(formData.amount),
+        type: 'expense' as const
       };
 
-      onAddTransaction(transaction);
+      // Call AI categorization
+      const categorizedTransaction = await categorizeTransaction(tempTransaction);
       
-      // Reset form
-      setFormData({
-        expenseDetail: '',
-        amount: '',
-        date: new Date().toISOString().split('T')[0],
-      });
+      if (categorizedTransaction) {
+        onAddTransaction(categorizedTransaction);
+        
+        // Reset form
+        setFormData({
+          expenseDetail: '',
+          amount: '',
+          date: new Date().toISOString().split('T')[0],
+        });
+      }
+    } catch (error) {
+      console.error('Error categorizing transaction:', error);
+      alert('Failed to categorize transaction. Please try again.');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const categorizeTransaction = async (transaction: any): Promise<Transaction | null> => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactions: [transaction],
+          action: 'categorize'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Categorization failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const categorized = data.categorizedTransactions[0];
+      
+      return {
+        id: transaction.id,
+        date: new Date(transaction.date),
+        category: categorized.category || 'Other',
+        subcategory: categorized.subcategory || 'Other',
+        amount: transaction.amount,
+        description: transaction.description,
+        type: categorized.type || 'expense',
+      };
+    } catch (error) {
+      console.error('Error in AI categorization:', error);
+      // Fallback to uncategorized
+      return {
+        id: transaction.id,
+        date: new Date(transaction.date),
+        category: 'Other',
+        subcategory: 'Other',
+        amount: transaction.amount,
+        description: transaction.description,
+        type: 'expense',
+      };
     }
   };
 
@@ -147,7 +205,8 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
         });
 
         if (importedTransactions.length > 0) {
-          onBulkImport(importedTransactions);
+          // Categorize all transactions before importing
+          await categorizeAndImportTransactions(importedTransactions);
           alert(`Successfully imported ${importedTransactions.length} transactions out of ${results.data.length} rows`);
         } else {
           alert('No valid transactions found in the CSV file. Please ensure your CSV has Date, Expense Detail, and Amount columns.');
@@ -163,6 +222,47 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
     event.target.value = '';
   };
 
+  const categorizeAndImportTransactions = async (transactions: Transaction[]) => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactions: transactions.map(t => ({
+            id: t.id,
+            date: t.date.toISOString().split('T')[0],
+            description: t.description,
+            amount: t.amount,
+            type: t.type
+          })),
+          action: 'categorize'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Categorization failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const categorizedTransactions = data.categorizedTransactions.map((cat: any, index: number) => ({
+        ...transactions[index],
+        category: cat.category || 'Other',
+        subcategory: cat.subcategory || 'Other',
+        type: cat.type || 'expense',
+      }));
+      
+      onBulkImport(categorizedTransactions);
+    } catch (error) {
+      console.error('Error categorizing imported transactions:', error);
+      // Import without categorization as fallback
+      onBulkImport(transactions);
+    }
+  };
   const handleCsvExport = () => {
     const csv = [
       'Date,Type,Category,Subcategory,Amount,Description',
