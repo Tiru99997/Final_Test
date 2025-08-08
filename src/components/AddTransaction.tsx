@@ -25,7 +25,11 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
   const [formData, setFormData] = useState({
     expenseDetail: '',
     amount: '',
-    date: new Date().toISOString().split('T')[0],
+    date: (() => {
+      // Get current date in Asia/Kolkata timezone
+      const kolkataDate = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+      return kolkataDate.toISOString().split('T')[0];
+    })(),
   });
   
   const [customCategory, setCustomCategory] = useState('');
@@ -51,7 +55,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
     try {
       const tempTransaction = {
         id: generateId(),
-        date: formData.date,
+        date: new Date(formData.date + 'T12:00:00+05:30'), // Set to noon in Asia/Kolkata
         description: formData.expenseDetail,
         amount: parseFloat(formData.amount),
         type: 'expense' as const
@@ -67,7 +71,11 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
         setFormData({
           expenseDetail: '',
           amount: '',
-          date: new Date().toISOString().split('T')[0],
+          date: (() => {
+            // Get current date in Asia/Kolkata timezone
+            const kolkataDate = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+            return kolkataDate.toISOString().split('T')[0];
+          })(),
         });
       }
     } catch (error) {
@@ -192,7 +200,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
             
             const transaction: Transaction = {
               id: generateId(),
-              date: parsedDate,
+              date: new Date(parsedDate.toLocaleString("en-US", {timeZone: "Asia/Kolkata"})),
               category: 'Uncategorized',
               subcategory: 'Uncategorized',
               amount: parsedAmount,

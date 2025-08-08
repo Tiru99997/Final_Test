@@ -9,11 +9,16 @@ export const saveTransaction = async (transaction: Transaction): Promise<{ data:
     return { data: null, error: { message: 'User not authenticated' } };
   }
 
+  // Convert date to Asia/Kolkata timezone and format as YYYY-MM-DD
+  const formatDateForDB = (date: Date): string => {
+    const kolkataDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    return kolkataDate.toISOString().split('T')[0];
+  };
   const { data, error } = await supabase
     .from('transactions')
     .insert({
       user_id: user.id,
-      date: transaction.date.toISOString().split('T')[0],
+      date: formatDateForDB(transaction.date),
       category: transaction.category,
       subcategory: transaction.subcategory,
       amount: transaction.amount,
@@ -44,9 +49,15 @@ export const loadTransactions = async (): Promise<Transaction[]> => {
     return [];
   }
 
+  // Parse dates considering Asia/Kolkata timezone
+  const parseDateFromDB = (dateString: string): Date => {
+    // Create date at noon in Asia/Kolkata to avoid timezone issues
+    const date = new Date(dateString + 'T12:00:00+05:30');
+    return date;
+  };
   return data.map(t => ({
     id: t.id,
-    date: new Date(t.date),
+    date: parseDateFromDB(t.date),
     category: t.category,
     subcategory: t.subcategory,
     amount: t.amount,
@@ -62,10 +73,15 @@ export const updateTransaction = async (transaction: Transaction): Promise<{ dat
     return { data: null, error: { message: 'User not authenticated' } };
   }
 
+  // Convert date to Asia/Kolkata timezone and format as YYYY-MM-DD
+  const formatDateForDB = (date: Date): string => {
+    const kolkataDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    return kolkataDate.toISOString().split('T')[0];
+  };
   const { data, error } = await supabase
     .from('transactions')
     .update({
-      date: transaction.date.toISOString().split('T')[0],
+      date: formatDateForDB(transaction.date),
       category: transaction.category,
       subcategory: transaction.subcategory,
       amount: transaction.amount,
@@ -103,9 +119,14 @@ export const bulkInsertTransactions = async (transactions: Transaction[]): Promi
     return { data: null, error: { message: 'User not authenticated' } };
   }
 
+  // Convert date to Asia/Kolkata timezone and format as YYYY-MM-DD
+  const formatDateForDB = (date: Date): string => {
+    const kolkataDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    return kolkataDate.toISOString().split('T')[0];
+  };
   const transactionsToInsert = transactions.map(t => ({
     user_id: user.id,
-    date: t.date.toISOString().split('T')[0],
+    date: formatDateForDB(t.date),
     category: t.category,
     subcategory: t.subcategory,
     amount: t.amount,
