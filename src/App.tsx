@@ -17,7 +17,6 @@ import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import AIInsights from './components/AIInsights';
 import SavingsDashboard from './components/SavingsDashboard';
-import InvestmentsDashboard from './components/InvestmentsDashboard';
 import AddTransaction from './components/AddTransaction';
 import TransactionHistory from './components/TransactionHistory';
 import BudgetSettings from './components/BudgetSettings';
@@ -179,8 +178,6 @@ function App() {
         return <AIInsights transactions={transactions} />;
       case 'savings':
         return <SavingsDashboard transactions={transactions} />;
-      case 'investments':
-        return <InvestmentsDashboard transactions={transactions} />;
       case 'add-transaction':
         return (
           <AddTransaction 

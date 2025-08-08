@@ -17,7 +17,6 @@ const Navigation: React.FC<NavigationProps> = ({ activeView, onViewChange, user 
     { id: 'ai-insights', label: 'AI Insights', icon: Brain },
     { id: 'budget-settings', label: 'Goals', icon: Target },
     { id: 'savings', label: 'Savings', icon: PiggyBank },
-    { id: 'investments', label: 'Investments', icon: TrendingUp },
     { id: 'add-transaction', label: 'Add Transaction', icon: Plus },
     { id: 'history', label: 'History', icon: History },
   ];
