@@ -133,14 +133,6 @@ const AIInsights: React.FC<AIInsightsProps> = ({ transactions }) => {
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="bg-white p-6 rounded-xl shadow-lg">
-        <div className="flex items-center space-x-2 mb-4">
-          <Brain className="h-6 w-6 text-purple-600" />
-          <h2 className="text-2xl font-semibold text-gray-800">Expense Analysis</h2>
-        </div>
-      </div>
-
       {/* Key Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500">
