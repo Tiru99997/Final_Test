@@ -308,11 +308,46 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
   const currentMonthSavingsRate = currentMonthIncome > 0 ? (currentMonthSavings / currentMonthIncome) * 100 : 0;
 
-  const currentMonthData = {
-    income: currentMonthIncome,
-    savings: currentMonthSavings,
-    savingsRate: currentMonthSavingsRate
+  // Find the most recent month with data (current month or last month)
+  const getMostRecentMonthData = () => {
+    // Check if current month has any income or savings data
+    if (currentMonthIncome > 0 || currentMonthSavings > 0) {
+      return {
+        income: currentMonthIncome,
+        savings: currentMonthSavings,
+        savingsRate: currentMonthSavingsRate,
+        monthName: format(currentDate, 'MMMM yyyy'),
+        isCurrentMonth: true
+      };
+    }
+    
+    // If current month has no data, find the most recent month with data
+    const monthsWithData = monthlySavingsData
+      .filter(data => data.income > 0 || data.savings > 0)
+      .reverse(); // Most recent first
+    
+    if (monthsWithData.length > 0) {
+      const recentMonth = monthsWithData[0];
+      return {
+        income: recentMonth.income,
+        savings: recentMonth.savings,
+        savingsRate: recentMonth.savingsRate,
+        monthName: recentMonth.month,
+        isCurrentMonth: false
+      };
+    }
+    
+    // Fallback if no data available
+    return {
+      income: 0,
+      savings: 0,
+      savingsRate: 0,
+      monthName: format(currentDate, 'MMMM yyyy'),
+      isCurrentMonth: true
+    };
   };
+
+  const currentMonthData = getMostRecentMonthData();
 
   // Calculate monthly savings target (15% of current month income)
   const monthlyTarget = currentMonthData.income * savingsTarget;
@@ -388,7 +423,12 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
         <h3 className="text-lg font-semibold text-gray-800 mb-6">Savings Goal Analysis</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium text-gray-700 mb-3">Current Month Performance</h4>
+            <h4 className="font-medium text-gray-700 mb-3">
+              {currentMonthData.isCurrentMonth ? 'Current' : 'Recent'} Month Performance
+              <span className="text-sm font-normal text-gray-500 ml-2">
+                ({currentMonthData.monthName})
+              </span>
+            </h4>
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Monthly Income:</span>
@@ -400,7 +440,7 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Target (15%):</span>
-                <span className="text-sm font-medium">{formatCurrency(monthlyTarget)}</span>
+                <span className="text-sm font-medium">{formatCurrency(currentMonthData.income * savingsTarget)}</span>
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span className="text-sm font-medium text-gray-700">Savings Rate:</span>
@@ -410,6 +450,11 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
                   {currentMonthData.savingsRate.toFixed(1)}%
                 </span>
               </div>
+              {!currentMonthData.isCurrentMonth && (
+                <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
+                  <span className="font-medium">Note:</span> Showing most recent month with data
+                </div>
+              )}
             </div>
           </div>
           
