@@ -57,8 +57,23 @@ export const calculateCategoryTotals = (
 };
 
 export const calculateSavingsProgress = (transactions: Transaction[]): number => {
-  return transactions
-    .filter(t => t.type === 'expense' && t.category === 'Savings')
+  const savingsTransactions = transactions.filter(t => {
+    if (t.type !== 'expense') return false;
+    
+    // Check if it's in the Savings category
+    if (t.category === 'Savings') return true;
+    
+    // Check if it's an investment-related transaction
+    const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+    const description = (t.description || '').toLowerCase();
+    const subcategory = (t.subcategory || '').toLowerCase();
+    
+    return investmentKeywords.some(keyword => 
+      description.includes(keyword) || subcategory.includes(keyword)
+    );
+  });
+  
+  return savingsTransactions
     .reduce((sum, t) => sum + t.amount, 0);
 };
 

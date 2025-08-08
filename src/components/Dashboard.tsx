@@ -85,11 +85,21 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
 
   // Calculate net worth (total savings accumulated over time)
   const calculateNetWorth = () => {
-    const allSavingsTransactions = transactions.filter(t => 
-      t.type === 'expense' && 
-      t.category === 'Savings' &&
-      t.date <= endOfMonth(selectedMonth)
-    );
+    const allSavingsTransactions = transactions.filter(t => {
+      if (t.type !== 'expense' || t.date > endOfMonth(selectedMonth)) return false;
+      
+      // Check if it's in the Savings category
+      if (t.category === 'Savings') return true;
+      
+      // Check if it's an investment-related transaction
+      const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+      const description = (t.description || '').toLowerCase();
+      const subcategory = (t.subcategory || '').toLowerCase();
+      
+      return investmentKeywords.some(keyword => 
+        description.includes(keyword) || subcategory.includes(keyword)
+      );
+    });
     return allSavingsTransactions.reduce((sum, t) => sum + t.amount, 0);
   };
 

@@ -36,10 +36,22 @@ interface SavingsDashboardProps {
 const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => {
   const currentDate = new Date();
   
-  // Calculate savings from transactions categorized as 'Savings'
-  const savingsTransactions = transactions.filter(t => 
-    t.type === 'expense' && t.category === 'Savings'
-  );
+  // Calculate savings from transactions categorized as 'Savings' or investment-related subcategories
+  const savingsTransactions = transactions.filter(t => {
+    if (t.type !== 'expense') return false;
+    
+    // Check if it's in the Savings category
+    if (t.category === 'Savings') return true;
+    
+    // Check if it's an investment-related transaction by subcategory
+    const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+    const description = (t.description || '').toLowerCase();
+    const subcategory = (t.subcategory || '').toLowerCase();
+    
+    return investmentKeywords.some(keyword => 
+      description.includes(keyword) || subcategory.includes(keyword)
+    );
+  });
   
   // Calculate total income for savings rate calculation
   const totalIncome = transactions
@@ -67,7 +79,21 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       .reduce((sum, t) => sum + t.amount, 0);
 
     const monthlySavings = monthlyTransactions
-      .filter(t => t.type === 'expense' && t.category === 'Savings')
+      .filter(t => {
+        if (t.type !== 'expense') return false;
+        
+        // Check if it's in the Savings category
+        if (t.category === 'Savings') return true;
+        
+        // Check if it's an investment-related transaction
+        const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+        const description = (t.description || '').toLowerCase();
+        const subcategory = (t.subcategory || '').toLowerCase();
+        
+        return investmentKeywords.some(keyword => 
+          description.includes(keyword) || subcategory.includes(keyword)
+        );
+      })
       .reduce((sum, t) => sum + t.amount, 0);
 
     const savingsRate = monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0;
