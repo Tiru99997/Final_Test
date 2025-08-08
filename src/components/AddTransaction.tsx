@@ -134,18 +134,42 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
       skipEmptyLines: true,
       transformHeader: (header) => {
         // Normalize header names to handle variations
-        return header.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+        return header.trim().toLowerCase();
       },
       complete: async (results) => {
         const importedTransactions: Transaction[] = [];
         
         results.data.forEach((row: any) => {
           // Handle various possible column names
-          const date = row.date || row.Date || row.DATE;
-          const amount = row.amount || row.Amount || row.AMOUNT;
-          const expenseDetail = row.expensedetail || row.expenseDetail || row.ExpenseDetail || 
-                               row.expense_detail || row.description || row.Description || 
-                               row.DESCRIPTION || row.detail || row.Detail || row.DETAIL;
+          // More flexible header matching
+          let date, amount, expenseDetail;
+          
+          // Find date column
+          Object.keys(row).forEach(key => {
+            const normalizedKey = key.toLowerCase().replace(/[^a-z]/g, '');
+            if (normalizedKey === 'date' || normalizedKey === 'dt') {
+              date = row[key];
+            }
+          });
+          
+          // Find amount column
+          Object.keys(row).forEach(key => {
+            const normalizedKey = key.toLowerCase().replace(/[^a-z]/g, '');
+            if (normalizedKey === 'amount' || normalizedKey === 'amt' || normalizedKey === 'value' || normalizedKey === 'price') {
+              amount = row[key];
+            }
+          });
+          
+          // Find expense detail column
+          Object.keys(row).forEach(key => {
+            const normalizedKey = key.toLowerCase().replace(/[^a-z]/g, '');
+            if (normalizedKey === 'expensedetail' || normalizedKey === 'expense' || 
+                normalizedKey === 'description' || normalizedKey === 'detail' || 
+                normalizedKey === 'particulars' || normalizedKey === 'narration' ||
+                normalizedKey === 'transaction' || normalizedKey === 'item') {
+              expenseDetail = row[key];
+            }
+          });
           
           if (date && amount && expenseDetail) {
             // Parse amount - remove commas, currency symbols, and handle various formats
