@@ -85,12 +85,11 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
           // Handle various possible column names
           const date = row.date || row.Date || row.DATE;
           const amount = row.amount || row.Amount || row.AMOUNT;
-          const category = row.category || row.Category || row.CATEGORY;
-          const subcategory = row.subcategory || row.Subcategory || row.SUBCATEGORY || row.subCategory;
-          const description = row.description || row.Description || row.DESCRIPTION;
-          const type = row.type || row.Type || row.TYPE;
+          const expenseDetail = row.expensedetail || row.expenseDetail || row.ExpenseDetail || 
+                               row.expense_detail || row.description || row.Description || 
+                               row.DESCRIPTION || row.detail || row.Detail || row.DETAIL;
           
-          if (date && amount && category) {
+          if (date && amount && expenseDetail) {
             // Parse amount - remove commas, currency symbols, and handle various formats
             let parsedAmount = 0;
             if (typeof amount === 'string') {
@@ -136,11 +135,11 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
             const transaction: Transaction = {
               id: generateId(),
               date: parsedDate,
-              category: category,
-              subcategory: subcategory || category,
+              category: 'Uncategorized',
+              subcategory: 'Uncategorized',
               amount: parsedAmount,
-              description: description || '',
-              type: type?.toLowerCase() === 'income' ? 'income' : 'expense',
+              description: expenseDetail,
+              type: 'expense', // Will be determined by AI categorization
             };
             
             importedTransactions.push(transaction);
@@ -151,7 +150,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
           onBulkImport(importedTransactions);
           alert(`Successfully imported ${importedTransactions.length} transactions out of ${results.data.length} rows`);
         } else {
-          alert('No valid transactions found in the CSV file. Please check the format and required columns.');
+          alert('No valid transactions found in the CSV file. Please ensure your CSV has Date, Expense Detail, and Amount columns.');
         }
       },
       error: (error) => {
@@ -231,12 +230,13 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
           <h4 className="font-medium text-gray-700 mb-2">CSV Import Format:</h4>
           <p className="text-sm text-gray-600 mb-2">Your CSV file should have these columns:</p>
           <code className="text-xs bg-white p-2 rounded block">
-            Date, Type, Category, Subcategory, Amount, Description
+            Date, Expense Detail, Amount
           </code>
           <div className="text-xs text-gray-500 mt-2 space-y-1">
-            <p>• Type should be either "income" or "expense"</p>
+            <p>• AI will automatically determine if it's income or expense</p>
             <p>• Date formats supported: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY</p>
             <p>• Amount can include commas and currency symbols (e.g., $100,000 or 100000)</p>
+            <p>• Expense Detail can be any description (e.g., "Salary", "Grocery", "Coffee")</p>
             <p>• Column names are case-insensitive</p>
           </div>
         </div>
