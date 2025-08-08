@@ -363,6 +363,31 @@ function categorizeTransactionsFallback(transactions: Transaction[]): Transactio
       return { ...transaction, type: 'expense', category: 'Living Expenses', subcategory: 'Grocery' }
     }
     
+    // Investment/Savings categorization - MUST come before other expense checks
+    if (description.includes('sip') || description.includes('systematic investment')) {
+      return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'SIPs' }
+    }
+    
+    if (description.includes('mutual fund') || description.includes('mf ') || description.includes(' mf')) {
+      return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'Mutual Fund' }
+    }
+    
+    if (description.includes('stock') || description.includes('stocks') || description.includes('equity') || description.includes('shares')) {
+      return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'Stocks' }
+    }
+    
+    if (description.includes('fd ') || description.includes(' fd') || description.includes('fixed deposit')) {
+      return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'Fixed Deposits' }
+    }
+    
+    if (description.includes('rd ') || description.includes(' rd') || description.includes('recurring deposit')) {
+      return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'Recurring Deposits' }
+    }
+    
+    if (description.includes('aif') || description.includes('alternative investment')) {
+      return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'AIF' }
+    }
+    
     if (description.includes('house rent') || description.includes('rent')) {
       return { ...transaction, type: 'expense', category: 'Rental', subcategory: 'House Rent' }
     }
@@ -373,10 +398,6 @@ function categorizeTransactionsFallback(transactions: Transaction[]): Transactio
     
     if (description.includes('school fees') || description.includes('tuition') || description.includes('education')) {
       return { ...transaction, type: 'expense', category: 'Education', subcategory: 'School Fees' }
-    }
-    
-    if (description.includes('sip') || description.includes('sips')) {
-      return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'SIPs' }
     }
     
     if (description.includes('gas') || description.includes('uber') || description.includes('taxi') || description.includes('bus')) {
