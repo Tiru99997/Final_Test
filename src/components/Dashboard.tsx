@@ -95,10 +95,31 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
     return monthsWithData.map(month => {
       const monthDate = new Date(month + '-01');
       const monthlyData = calculateMonthlyTotals(transactions, budgets, monthDate);
+      
+      // Calculate expenses excluding savings
+      const monthStart = startOfMonth(monthDate);
+      const monthEnd = endOfMonth(monthDate);
+      const monthTransactions = transactions.filter(t => 
+        t.date >= monthStart && t.date <= monthEnd && t.type === 'expense'
+      );
+      
+      const expensesExcludingSavings = monthTransactions.filter(t => {
+        if (t.category === 'Savings') return false;
+        
+        const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+        const description = (t.description || '').toLowerCase();
+        const subcategory = (t.subcategory || '').toLowerCase();
+        
+        return !investmentKeywords.some(keyword => 
+          description.includes(keyword) || subcategory.includes(keyword)
+        );
+      }).reduce((sum, t) => sum + t.amount, 0);
+      
       return {
         month: format(monthDate, 'MMM yyyy'),
         shortMonth: format(monthDate, 'MMM'),
-        ...monthlyData
+        ...monthlyData,
+        expensesExcludingSavings
       };
     });
   };
@@ -172,57 +193,30 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
       {
         label: 'Income',
         data: monthlyChartData.map(data => data.income),
-        borderColor: '#22C55E',
-        backgroundColor: '#22C55E',
+        borderColor: '#10B981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
         fill: false,
-        tension: 0.4,
-        pointRadius: 6,
-        pointHoverRadius: 8,
-        borderWidth: 4,
-        pointBackgroundColor: '#22C55E',
+        tension: 0.1,
+        pointRadius: 8,
+        pointHoverRadius: 10,
+        borderWidth: 5,
+        pointBackgroundColor: '#10B981',
         pointBorderColor: '#ffffff',
-        pointBorderWidth: 3,
+        pointBorderWidth: 4,
       },
       {
-        label: 'Expenses (Excluding Savings)',
-        data: monthlyChartData.map(data => {
-          // Parse the month string correctly
-          const [monthName, year] = data.month.split(' ');
-          const monthIndex = new Date(Date.parse(monthName + " 1, " + year)).getMonth();
-          const monthDate = new Date(parseInt(year), monthIndex, 1);
-          const monthStart = startOfMonth(monthDate);
-          const monthEnd = endOfMonth(monthDate);
-          
-          const monthTransactions = transactions.filter(t => 
-            t.date >= monthStart && t.date <= monthEnd && t.type === 'expense'
-          );
-          
-          // Filter out savings transactions
-          const nonSavingsExpenses = monthTransactions.filter(t => {
-            if (t.category === 'Savings') return false;
-            
-            // Check if it's an investment-related transaction
-            const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
-            const description = (t.description || '').toLowerCase();
-            const subcategory = (t.subcategory || '').toLowerCase();
-            
-            return !investmentKeywords.some(keyword => 
-              description.includes(keyword) || subcategory.includes(keyword)
-            );
-          });
-          
-          return nonSavingsExpenses.reduce((sum, t) => sum + t.amount, 0);
-        }),
-        borderColor: '#DC2626',
-        backgroundColor: '#DC2626',
+        label: 'Expenses (Excluding Savings)', 
+        data: monthlyChartData.map(data => data.expensesExcludingSavings),
+        borderColor: '#EF4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
         fill: false,
-        tension: 0.4,
-        pointRadius: 6,
-        pointHoverRadius: 8,
-        borderWidth: 4,
-        pointBackgroundColor: '#DC2626',
+        tension: 0.1,
+        pointRadius: 8,
+        pointHoverRadius: 10,
+        borderWidth: 5,
+        pointBackgroundColor: '#EF4444',
         pointBorderColor: '#ffffff',
-        pointBorderWidth: 3,
+        pointBorderWidth: 4,
       }
     ]
   };
@@ -462,16 +456,24 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                   },
                 },
                 scales: {
-                  y: { 
-                    min: 90000,
-                    max: 130000,
+                  y: {
+                    beginAtZero: false,
+                    min: 85000,
+                    max: 135000,
+                    grid: {
+                      color: 'rgba(0, 0, 0, 0.1)',
+                    },
                     ticks: {
+                      stepSize: 10000,
                       callback: function(value) {
                         return formatCurrency(value as number);
                       }
                     }
                   },
                   x: {
+                    grid: {
+                      color: 'rgba(0, 0, 0, 0.1)',
+                    },
                     ticks: {
                       maxRotation: 45,
                       minRotation: 0
