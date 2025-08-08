@@ -173,17 +173,23 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         label: 'Income',
         data: monthlyChartData.map(data => data.income),
         borderColor: '#22C55E',
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-        fill: false,
+        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+        fill: true,
         tension: 0.4,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        borderWidth: 3,
       },
       {
         label: 'Expenses',
         data: monthlyChartData.map(data => data.expenses),
         borderColor: '#EF4444',
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        backgroundColor: 'rgba(239, 68, 68, 0.2)',
         fill: false,
         tension: 0.4,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        borderWidth: 3,
       }
     ]
   };
@@ -418,12 +424,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 },
                 scales: {
                   y: { 
-                    beginAtZero: true,
-                    min: 0,
-                    max: Math.max(
-                      Math.max(...incomeExpenseLineData.datasets[0].data),
-                      Math.max(...incomeExpenseLineData.datasets[1].data)
-                    ) * 1.2, // 20% padding above highest value
+                    min: 90000,
+                    max: 130000,
                     ticks: {
                       callback: function(value) {
                         return formatCurrency(value as number);
@@ -506,6 +508,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 {/* Income Categories */}
                 {Object.values(categoryBreakdown)
                   .filter(item => item.type === 'income')
+                  .sort((a, b) => {
+                    const aTotal = Object.values(a.months).reduce((sum, val) => sum + val, 0);
+                    const bTotal = Object.values(b.months).reduce((sum, val) => sum + val, 0);
+                    return bTotal - aTotal;
+                  })
                   .map((item, idx) => (
                     <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-2 px-4 pl-8 text-gray-700">{item.category}</td>
@@ -537,6 +544,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 {/* Expense Categories */}
                 {Object.values(categoryBreakdown)
                   .filter(item => item.type === 'expense')
+                  .sort((a, b) => {
+                    const aTotal = Object.values(a.months).reduce((sum, val) => sum + val, 0);
+                    const bTotal = Object.values(b.months).reduce((sum, val) => sum + val, 0);
+                    return bTotal - aTotal;
+                  })
                   .map((item, idx) => (
                     <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-2 px-4 pl-8 text-gray-700">{item.category}</td>
@@ -572,11 +584,70 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                   })}
                 </tr>
                 
+                {/* Savings Breakdown */}
+                <tr className="border-b border-gray-200 bg-purple-50">
+                  <td className="py-2 px-4 font-semibold text-purple-800">SAVINGS BREAKDOWN</td>
+                  {monthsData.slice(0, 6).map((_, index) => (
+                    <td key={index} className="py-2 px-3"></td>
+                  ))}
+                </tr>
+                
+                {/* Savings Categories */}
+                {Object.values(categoryBreakdown)
+                  .filter(item => item.type === 'expense' && (
+                    item.category === 'Savings' || 
+                    ['SIP', 'Mutual Fund', 'Stocks', 'FD', 'RD', 'AIF'].some(keyword => 
+                      item.category.toLowerCase().includes(keyword.toLowerCase())
+                    )
+                  ))
+                  .sort((a, b) => {
+                    const aTotal = Object.values(a.months).reduce((sum, val) => sum + val, 0);
+                    const bTotal = Object.values(b.months).reduce((sum, val) => sum + val, 0);
+                    return bTotal - aTotal;
+                  })
+                  .map((item, idx) => (
+                    <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-2 px-4 pl-8 text-gray-700">{item.category}</td>
+                      {monthsData.slice(0, 6).map((monthData, index) => (
+                        <td key={index} className="py-2 px-3 text-center text-purple-600 font-medium">
+                          {item.months[monthData.month] ? formatCurrency(item.months[monthData.month]) : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                
+                <tr className="border-b border-gray-200 bg-purple-100">
+                  <td className="py-2 px-4 pl-4 font-semibold text-purple-800">Total Savings</td>
+                  {monthsData.slice(0, 6).map((monthData, index) => {
+                    const savingsAmount = Object.values(categoryBreakdown)
+                      .filter(item => item.type === 'expense' && (
+                        item.category === 'Savings' || 
+                        ['SIP', 'Mutual Fund', 'Stocks', 'FD', 'RD', 'AIF'].some(keyword => 
+                          item.category.toLowerCase().includes(keyword.toLowerCase())
+                        )
+                      ))
+                      .reduce((sum, item) => sum + (item.months[monthData.month] || 0), 0);
+                    return (
+                      <td key={index} className="py-2 px-3 text-center text-purple-600 font-medium">
+                        {savingsAmount > 0 ? formatCurrency(savingsAmount) : '-'}
+                      </td>
+                    );
+                  })}
+                </tr>
+                
                 {/* Savings Rate */}
                 <tr className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="py-2 px-4 pl-8 text-gray-700 font-medium">Savings Rate</td>
                   {monthsData.slice(0, 6).map((monthData, index) => {
-                    const savingsRate = monthData.income > 0 ? ((monthData.income - monthData.expenses) / monthData.income) * 100 : 0;
+                    const savingsAmount = Object.values(categoryBreakdown)
+                      .filter(item => item.type === 'expense' && (
+                        item.category === 'Savings' || 
+                        ['SIP', 'Mutual Fund', 'Stocks', 'FD', 'RD', 'AIF'].some(keyword => 
+                          item.category.toLowerCase().includes(keyword.toLowerCase())
+                        )
+                      ))
+                      .reduce((sum, item) => sum + (item.months[monthData.month] || 0), 0);
+                    const savingsRate = monthData.income > 0 ? (savingsAmount / monthData.income) * 100 : 0;
                     return (
                       <td key={index} className={`py-2 px-3 text-center font-medium ${
                         savingsRate >= 15 ? 'text-green-600' : savingsRate >= 10 ? 'text-yellow-600' : 'text-red-600'
