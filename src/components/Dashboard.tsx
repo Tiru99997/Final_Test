@@ -173,21 +173,23 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         label: 'Income',
         data: monthlyChartData.map(data => data.income),
         borderColor: '#22C55E',
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        backgroundColor: '#22C55E',
         fill: false,
         tension: 0.4,
-        pointRadius: 8,
-        pointHoverRadius: 10,
+        pointRadius: 6,
+        pointHoverRadius: 8,
         borderWidth: 4,
         pointBackgroundColor: '#22C55E',
         pointBorderColor: '#ffffff',
-        pointBorderWidth: 2,
+        pointBorderWidth: 3,
       },
       {
-        label: 'Expenses (excluding Savings)',
+        label: 'Expenses (Excluding Savings)',
         data: monthlyChartData.map(data => {
-          // Calculate expenses excluding savings for this month
-          const monthDate = new Date(data.month + ' 01, 2024');
+          // Parse the month string correctly
+          const [monthName, year] = data.month.split(' ');
+          const monthIndex = new Date(Date.parse(monthName + " 1, " + year)).getMonth();
+          const monthDate = new Date(parseInt(year), monthIndex, 1);
           const monthStart = startOfMonth(monthDate);
           const monthEnd = endOfMonth(monthDate);
           
@@ -212,15 +214,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
           return nonSavingsExpenses.reduce((sum, t) => sum + t.amount, 0);
         }),
         borderColor: '#DC2626',
-        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+        backgroundColor: '#DC2626',
         fill: false,
         tension: 0.4,
-        pointRadius: 8,
-        pointHoverRadius: 10,
+        pointRadius: 6,
+        pointHoverRadius: 8,
         borderWidth: 4,
         pointBackgroundColor: '#DC2626',
         pointBorderColor: '#ffffff',
-        pointBorderWidth: 2,
+        pointBorderWidth: 3,
       }
     ]
   };
@@ -451,7 +453,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                  legend: { position: 'top' },
+                  legend: { 
+                    position: 'top',
+                    labels: {
+                      usePointStyle: true,
+                      pointStyle: 'line'
+                    }
+                  },
                 },
                 scales: {
                   y: { 
@@ -461,6 +469,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                       callback: function(value) {
                         return formatCurrency(value as number);
                       }
+                    }
+                  },
+                  x: {
+                    ticks: {
+                      maxRotation: 45,
+                      minRotation: 0
                     }
                   }
                 }
