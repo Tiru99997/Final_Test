@@ -1,4 +1,3 @@
-import React from 'react';
 import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types';
 import { format, subMonths, startOfMonth } from 'date-fns';
