@@ -231,42 +231,58 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
       {/* Savings Targets Progress */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Monthly Savings Goal Progress</h3>
-        <div className="space-y-4">
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">Current Month Goal (15% of Income)</span>
-              <span className="text-sm text-gray-800">
-                {formatCurrency(currentMonthData.savings)} / {formatCurrency(monthlyTarget)}
-              </span>
+        <h3 className="text-lg font-semibold text-gray-800 mb-6">Savings Goal Analysis</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-medium text-gray-700 mb-3">Current Month Performance</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Monthly Income:</span>
+                <span className="text-sm font-medium">{formatCurrency(currentMonthData.income)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Monthly Savings:</span>
+                <span className="text-sm font-medium">{formatCurrency(currentMonthData.savings)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Target (15%):</span>
+                <span className="text-sm font-medium">{formatCurrency(monthlyTarget)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-sm font-medium text-gray-700">Savings Rate:</span>
+                <span className={`text-sm font-bold ${
+                  currentMonthData.savingsRate >= 15 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {currentMonthData.savingsRate.toFixed(1)}%
+                </span>
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div 
-                className="bg-green-500 h-3 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(monthlyProgress, 100)}%` }}
-              ></div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">{monthlyProgress.toFixed(1)}% complete</p>
           </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">Overall Savings Rate Goal</span>
-              <span className="text-sm text-gray-800">
-                {overallSavingsRate.toFixed(1)}% / 15%
-              </span>
+          
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-medium text-gray-700 mb-3">Overall Performance</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Total Income:</span>
+                <span className="text-sm font-medium">{formatCurrency(totalIncome)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Total Savings:</span>
+                <span className="text-sm font-medium">{formatCurrency(totalSavings)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Target (15%):</span>
+                <span className="text-sm font-medium">{formatCurrency(targetSavings)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-sm font-medium text-gray-700">Overall Rate:</span>
+                <span className={`text-sm font-bold ${
+                  overallSavingsRate >= 15 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {overallSavingsRate.toFixed(1)}%
+                </span>
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div 
-                className={`h-3 rounded-full transition-all duration-300 ${
-                  overallSavingsRate >= 15 ? 'bg-green-500' : 'bg-blue-500'
-                }`}
-                style={{ width: `${Math.min((overallSavingsRate / 15) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {((overallSavingsRate / 15) * 100).toFixed(1)}% of target achieved
-            </p>
           </div>
         </div>
       </div>
@@ -337,8 +353,9 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
                 },
                 scales: {
                   y: { 
-                    beginAtZero: true,
-                    max: 50,
+                    beginAtZero: false,
+                    min: Math.max(0, Math.min(...monthlySavingsData.map(d => d.savingsRate)) - 2),
+                    max: Math.max(20, Math.max(...monthlySavingsData.map(d => d.savingsRate)) + 2),
                     ticks: {
                       callback: function(value) {
                         return value + '%';

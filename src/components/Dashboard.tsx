@@ -344,16 +344,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         <div className="bg-white p-6 rounded-xl shadow-lg">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Income Categories</h3>
           <div className="h-64">
-            {Object.keys(INCOME_CATEGORIES).some(cat => categoryTotals[cat] > 0) ? (
+            {Object.keys(INCOME_CATEGORIES).some(cat => (categoryTotals[cat] || 0) > 0) ? (
               <Pie 
                 data={{
-                  labels: Object.keys(INCOME_CATEGORIES).filter(cat => categoryTotals[cat] > 0),
+                  labels: Object.keys(INCOME_CATEGORIES).filter(cat => (categoryTotals[cat] || 0) > 0),
                   datasets: [{
                     data: Object.keys(INCOME_CATEGORIES)
-                      .filter(cat => categoryTotals[cat] > 0)
-                      .map(cat => categoryTotals[cat]),
+                      .filter(cat => (categoryTotals[cat] || 0) > 0)
+                      .map(cat => categoryTotals[cat] || 0),
                     backgroundColor: Object.keys(INCOME_CATEGORIES)
-                      .filter(cat => categoryTotals[cat] > 0)
+                      .filter(cat => (categoryTotals[cat] || 0) > 0)
                       .map(cat => getCategoryColor(cat)),
                     borderWidth: 2,
                     borderColor: '#ffffff',
@@ -386,16 +386,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         <div className="bg-white p-6 rounded-xl shadow-lg">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Expense Categories</h3>
           <div className="h-64">
-            {currentMonthTransactions.filter(t => t.type === 'expense').length > 0 ? (
+            {Object.keys(EXPENSE_CATEGORIES).some(cat => (categoryTotals[cat] || 0) > 0) ? (
               <Pie 
                 data={{
-                  labels: Object.keys(EXPENSE_CATEGORIES).filter(cat => categoryTotals[cat] > 0),
+                  labels: Object.keys(EXPENSE_CATEGORIES).filter(cat => (categoryTotals[cat] || 0) > 0),
                   datasets: [{
                     data: Object.keys(EXPENSE_CATEGORIES)
-                      .filter(cat => categoryTotals[cat] > 0)
-                      .map(cat => categoryTotals[cat]),
+                      .filter(cat => (categoryTotals[cat] || 0) > 0)
+                      .map(cat => categoryTotals[cat] || 0),
                     backgroundColor: Object.keys(EXPENSE_CATEGORIES)
-                      .filter(cat => categoryTotals[cat] > 0)
+                      .filter(cat => (categoryTotals[cat] || 0) > 0)
                       .map(cat => getCategoryColor(cat)),
                     borderWidth: 2,
                     borderColor: '#ffffff',

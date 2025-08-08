@@ -269,6 +269,9 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                   Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Expense Detail
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Category
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -284,6 +287,11 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                 <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {format(transaction.date, 'MMM dd, yyyy')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="max-w-xs truncate" title={transaction.description || ''}>
+                      {transaction.description || 'No description'}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -326,7 +334,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
               ))}
               {filteredTransactions.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                     No transactions found matching your criteria
                   </td>
                 </tr>
