@@ -131,13 +131,46 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
   const categorizeSavingsWithAI = async () => {
     setCategorizingSavings(true);
     
+    // Check if Supabase URL is available
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase configuration not available, using fallback categorization');
+      // Use fallback categorization
+      const fallbackSavings = savingsTransactions.reduce((acc, t) => {
+        const description = t.description?.toLowerCase() || '';
+        
+        if (description.includes('sip') || description.includes('systematic')) {
+          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
+        } else if (description.includes('mutual fund') || description.includes('mf')) {
+          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
+        } else if (description.includes('stock') || description.includes('equity')) {
+          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
+        } else if (description.includes('fd') || description.includes('fixed deposit')) {
+          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
+        } else if (description.includes('rd') || description.includes('recurring deposit')) {
+          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
+        } else if (description.includes('aif') || description.includes('alternative investment')) {
+          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
+        } else {
+          acc[t.subcategory] = (acc[t.subcategory] || 0) + t.amount;
+        }
+        return acc;
+      }, {} as { [key: string]: number });
+      
+      setSavingsByCategory(fallbackSavings);
+      setCategorizingSavings(false);
+      return;
+    }
+    
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
+      const apiUrl = `${supabaseUrl}/functions/v1/financial-analysis`;
       
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
