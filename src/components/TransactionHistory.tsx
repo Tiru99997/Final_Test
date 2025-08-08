@@ -205,12 +205,6 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Category
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Subcategory
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
-                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Amount
                 </th>
@@ -235,12 +229,6 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                         {transaction.category}
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {transaction.subcategory}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                    {transaction.description || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <span className={`text-sm font-medium ${
@@ -272,7 +260,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
               ))}
               {filteredTransactions.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                     No transactions found matching your criteria
                   </td>
                 </tr>

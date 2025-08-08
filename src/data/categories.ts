@@ -34,18 +34,21 @@ export const getAllCategories = () => ({
 
 export const getCategoryColor = (category: string): string => {
   const colors: { [key: string]: string } = {
-    'Leisure': '#8B5CF6',
-    'Dining Out': '#F59E0B',
+    'Living Expenses': '#F59E0B',
+    'Rental': '#DC2626',
+    'Travel': '#8B5CF6',
+    'Entertainment': '#EC4899',
     'Medical': '#EF4444',
     'Personal Development': '#10B981',
-    'Transport': '#3B82F6',
-    'Charity': '#EC4899',
-    'Bills': '#6B7280',
+    'Shopping': '#3B82F6',
+    'Charity': '#A855F7',
     'Savings': '#059669',
     'Investments': '#047857',
-    'Living Expenses': '#DC2626',
-    'Fixed Income': '#22C55E',
-    'Variable Income': '#16A34A'
+    'Other': '#6B7280',
+    'Income': '#22C55E',
+    'Rental Income': '#16A34A',
+    'Investment Income': '#059669',
+    'Other Income': '#10B981'
   };
   return colors[category] || '#6B7280';
 };

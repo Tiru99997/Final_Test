@@ -21,12 +21,10 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
   onLoadSampleData,
   onLoadSampleBudgets
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
-    type: 'expense' as 'income' | 'expense',
-    category: '',
-    subcategory: '',
+    expenseDetail: '',
     amount: '',
-    description: '',
     date: new Date().toISOString().split('T')[0],
   });
   
@@ -35,80 +33,96 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
   const [showCustomCategory, setShowCustomCategory] = useState(false);
   const [showCustomSubcategory, setShowCustomSubcategory] = useState(false);
 
-  // Get dynamic categories from existing transactions using useMemo for performance
-  const availableCategories = useMemo(() => {
-    const transactionsByType = transactions.filter(t => t.type === formData.type);
-    const dynamicCategories: { [key: string]: string[] } = {};
-    
-    // Start with predefined categories
-    const baseCategories = formData.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-    Object.keys(baseCategories).forEach(category => {
-      dynamicCategories[category] = [...baseCategories[category]];
-    });
-    
-    // Add categories and subcategories from existing transactions
-    transactionsByType.forEach(transaction => {
-      if (!dynamicCategories[transaction.category]) {
-        dynamicCategories[transaction.category] = [];
-      }
-      if (!dynamicCategories[transaction.category].includes(transaction.subcategory)) {
-        dynamicCategories[transaction.category].push(transaction.subcategory);
-      }
-    });
-    
-    // Sort subcategories for each category
-    Object.keys(dynamicCategories).forEach(category => {
-      dynamicCategories[category].sort();
-    });
-    
-    return dynamicCategories;
-  }, [transactions, formData.type]);
-  
-  const availableCategoryNames = useMemo(() => {
-    return Object.keys(availableCategories).sort();
-  }, [availableCategories]);
-  
-  // Reset category and subcategory when type changes
-  useEffect(() => {
-    setFormData(prev => ({ ...prev, category: '', subcategory: '' }));
-  }, [formData.type]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsProcessing(true);
     
-    const finalCategory = showCustomCategory ? customCategory : formData.category;
-    const finalSubcategory = showCustomSubcategory ? customSubcategory : formData.subcategory;
-    
-    if (!finalCategory || !finalSubcategory || !formData.amount) {
+    if (!formData.expenseDetail || !formData.amount) {
       alert('Please fill in all required fields');
+      setIsProcessing(false);
       return;
     }
 
-    const transaction: Transaction = {
-      id: generateId(),
-      date: new Date(formData.date),
-      category: finalCategory,
-      subcategory: finalSubcategory,
-      amount: parseFloat(formData.amount),
-      description: formData.description,
-      type: formData.type,
-    };
+    // Call AI categorization first
+    categorizeAndAddTransaction();
+  };
 
-    onAddTransaction(transaction);
-    
-    // Reset form
-    setFormData({
-      type: 'expense',
-      category: '',
-      subcategory: '',
-      amount: '',
-      description: '',
-      date: new Date().toISOString().split('T')[0],
-    });
-    setCustomCategory('');
-    setCustomSubcategory('');
-    setShowCustomCategory(false);
-    setShowCustomSubcategory(false);
+  const categorizeAndAddTransaction = async () => {
+    try {
+      const tempTransaction = {
+        id: generateId(),
+        date: formData.date,
+        description: formData.expenseDetail,
+        amount: parseFloat(formData.amount),
+        type: 'expense' as const
+      };
+
+      // Call AI categorization
+      const categorizedTransaction = await categorizeTransaction(tempTransaction);
+      
+      if (categorizedTransaction) {
+        onAddTransaction(categorizedTransaction);
+        
+        // Reset form
+        setFormData({
+          expenseDetail: '',
+          amount: '',
+          date: new Date().toISOString().split('T')[0],
+        });
+      }
+    } catch (error) {
+      console.error('Error categorizing transaction:', error);
+      alert('Failed to categorize transaction. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const categorizeTransaction = async (transaction: any): Promise<Transaction | null> => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactions: [transaction],
+          action: 'categorize'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Categorization failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const categorized = data.categorizedTransactions[0];
+      
+      return {
+        id: transaction.id,
+        date: new Date(transaction.date),
+        category: categorized.category || 'Other',
+        subcategory: categorized.subcategory || 'Other',
+        amount: transaction.amount,
+        description: transaction.description,
+        type: categorized.type || 'expense',
+      };
+    } catch (error) {
+      console.error('Error in AI categorization:', error);
+      // Fallback to uncategorized
+      return {
+        id: transaction.id,
+        date: new Date(transaction.date),
+        category: 'Other',
+        subcategory: 'Other',
+        amount: transaction.amount,
+        description: transaction.description,
+        type: 'expense',
+      };
+    }
   };
 
   const handleCsvImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,37 +131,90 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
 
     Papa.parse(file, {
       header: true,
-      complete: (results) => {
+      skipEmptyLines: true,
+      transformHeader: (header) => {
+        // Normalize header names to handle variations
+        return header.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      },
+      complete: async (results) => {
         const importedTransactions: Transaction[] = [];
         
         results.data.forEach((row: any) => {
-          if (row.Date && row.Amount && row.Category) {
+          // Handle various possible column names
+          const date = row.date || row.Date || row.DATE;
+          const amount = row.amount || row.Amount || row.AMOUNT;
+          const expenseDetail = row.expensedetail || row.expenseDetail || row.ExpenseDetail || 
+                               row.expense_detail || row.description || row.Description || 
+                               row.DESCRIPTION || row.detail || row.Detail || row.DETAIL;
+          
+          if (date && amount && expenseDetail) {
+            // Parse amount - remove commas, currency symbols, and handle various formats
+            let parsedAmount = 0;
+            if (typeof amount === 'string') {
+              // Remove currency symbols, commas, and spaces
+              const cleanAmount = amount.replace(/[$,\s]/g, '');
+              parsedAmount = parseFloat(cleanAmount);
+            } else {
+              parsedAmount = parseFloat(amount);
+            }
+            
+            // Parse date - handle various date formats
+            let parsedDate = new Date();
+            if (typeof date === 'string') {
+              // Try different date formats
+              const dateFormats = [
+                date, // Original format
+                date.replace(/\//g, '-'), // Replace / with -
+                date.replace(/\./g, '-'), // Replace . with -
+              ];
+              
+              for (const dateFormat of dateFormats) {
+                const testDate = new Date(dateFormat);
+                if (!isNaN(testDate.getTime())) {
+                  parsedDate = testDate;
+                  break;
+                }
+              }
+            } else {
+              parsedDate = new Date(date);
+            }
+            
+            // Validate parsed values
+            if (isNaN(parsedAmount) || parsedAmount <= 0) {
+              console.warn(`Invalid amount for row:`, row);
+              return;
+            }
+            
+            if (isNaN(parsedDate.getTime())) {
+              console.warn(`Invalid date for row:`, row);
+              return;
+            }
+            
             const transaction: Transaction = {
               id: generateId(),
-              date: new Date(row.Date),
-              category: row.Category,
-              subcategory: row.Subcategory || row.Category,
-              amount: parseFloat(row.Amount),
-              description: row.Description || '',
-              type: row.Type?.toLowerCase() === 'income' ? 'income' : 'expense',
+              date: parsedDate,
+              category: 'Uncategorized',
+              subcategory: 'Uncategorized',
+              amount: parsedAmount,
+              description: expenseDetail,
+              type: 'expense', // Will be determined by AI categorization
             };
             
-            if (!isNaN(transaction.amount)) {
-              importedTransactions.push(transaction);
-            }
+            importedTransactions.push(transaction);
           }
         });
 
         if (importedTransactions.length > 0) {
-          onBulkImport(importedTransactions);
-          alert(`Successfully imported ${importedTransactions.length} transactions`);
+          // Categorize all transactions before importing
+          await categorizeAndImportTransactions(importedTransactions);
+          alert(`Successfully imported ${importedTransactions.length} transactions out of ${results.data.length} rows`);
         } else {
-          alert('No valid transactions found in the CSV file');
+          alert('No valid transactions found in the CSV file. Please ensure your CSV has Date, Expense Detail, and Amount columns.');
         }
       },
       error: (error) => {
         console.error('CSV parsing error:', error);
-        alert('Error parsing CSV file');
+        alert('Error parsing CSV file: ' + error.message);
       }
     });
 
@@ -155,6 +222,47 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
     event.target.value = '';
   };
 
+  const categorizeAndImportTransactions = async (transactions: Transaction[]) => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactions: transactions.map(t => ({
+            id: t.id,
+            date: t.date.toISOString().split('T')[0],
+            description: t.description,
+            amount: t.amount,
+            type: t.type
+          })),
+          action: 'categorize'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Categorization failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const categorizedTransactions = data.categorizedTransactions.map((cat: any, index: number) => ({
+        ...transactions[index],
+        category: cat.category || 'Other',
+        subcategory: cat.subcategory || 'Other',
+        type: cat.type || 'expense',
+      }));
+      
+      onBulkImport(categorizedTransactions);
+    } catch (error) {
+      console.error('Error categorizing imported transactions:', error);
+      // Import without categorization as fallback
+      onBulkImport(transactions);
+    }
+  };
   const handleCsvExport = () => {
     const csv = [
       'Date,Type,Category,Subcategory,Amount,Description',
@@ -222,11 +330,15 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
           <h4 className="font-medium text-gray-700 mb-2">CSV Import Format:</h4>
           <p className="text-sm text-gray-600 mb-2">Your CSV file should have these columns:</p>
           <code className="text-xs bg-white p-2 rounded block">
-            Date, Type, Category, Subcategory, Amount, Description
+            Date, Expense Detail, Amount
           </code>
-          <p className="text-xs text-gray-500 mt-2">
-            Type should be either "income" or "expense". Date format: YYYY-MM-DD
-          </p>
+          <div className="text-xs text-gray-500 mt-2 space-y-1">
+            <p>• AI will automatically determine if it's income or expense</p>
+            <p>• Date formats supported: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY</p>
+            <p>• Amount can include commas and currency symbols (e.g., $100,000 or 100000)</p>
+            <p>• Expense Detail can be any description (e.g., "Salary", "Grocery", "Coffee")</p>
+            <p>• Column names are case-insensitive</p>
+          </div>
         </div>
       </div>
 
@@ -238,201 +350,74 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Transaction Type */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Transaction Type
-              </label>
-              <div className="flex space-x-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="expense"
-                    checked={formData.type === 'expense'}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      type: e.target.value as 'expense',
-                    })}
-                    className="mr-2"
-                  />
-                  <span className="text-red-600 font-medium">Expense</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="income"
-                    checked={formData.type === 'income'}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      type: e.target.value as 'income',
-                    })}
-                    className="mr-2"
-                  />
-                  <span className="text-green-600 font-medium">Income</span>
-                </label>
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date
-              </label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                required
-              />
-            </div>
+          {/* Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date
+            </label>
+            <input
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              required
+            />
           </div>
 
-          {/* Category Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
-              {!showCustomCategory ? (
-                <div className="space-y-2">
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      category: e.target.value,
-                      subcategory: ''
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Select category...</option>
-                    {availableCategoryNames.map(category => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomCategory(true)}
-                    className="text-sm text-green-600 hover:text-green-700"
-                  >
-                    + Add new category
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={customCategory}
-                    onChange={(e) => setCustomCategory(e.target.value)}
-                    placeholder="Enter new category name"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomCategory(false)}
-                    className="text-sm text-gray-600 hover:text-gray-700"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Subcategory
-              </label>
-              {!showCustomSubcategory ? (
-                <div className="space-y-2">
-                  <select
-                    value={formData.subcategory}
-                    onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    required
-                    disabled={!formData.category && !customCategory}
-                  >
-                    <option value="">Select subcategory...</option>
-                    {(formData.category ? availableCategories[formData.category] || [] : []).map(subcategory => (
-                      <option key={subcategory} value={subcategory}>
-                        {subcategory}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomSubcategory(true)}
-                    className="text-sm text-green-600 hover:text-green-700"
-                    disabled={!formData.category && !customCategory}
-                  >
-                    + Add new subcategory
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={customSubcategory}
-                    onChange={(e) => setCustomSubcategory(e.target.value)}
-                    placeholder="Enter new subcategory name"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomSubcategory(false)}
-                    className="text-sm text-gray-600 hover:text-gray-700"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
+          {/* Expense Detail */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Expense Detail
+            </label>
+            <input
+              type="text"
+              value={formData.expenseDetail}
+              onChange={(e) => setFormData({ ...formData, expenseDetail: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="e.g., Salary, Grocery shopping, Coffee, Rent, etc."
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              AI will automatically categorize this as income or expense
+            </p>
           </div>
 
-          {/* Amount and Description */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Amount ($)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="0.00"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description (Optional)
-              </label>
-              <input
-                type="text"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="Add a note about this transaction"
-              />
-            </div>
+          {/* Amount */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Amount ($)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="0.00"
+              required
+            />
           </div>
 
           {/* Submit Button */}
           <div className="flex justify-end">
             <button
               type="submit"
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+              disabled={isProcessing}
+              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
             >
-              <Plus className="h-4 w-4" />
-              <span>Add Transaction</span>
+              {isProcessing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  <span>Add Transaction</span>
+                </>
+              )}
             </button>
           </div>
         </form>
