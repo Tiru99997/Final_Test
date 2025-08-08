@@ -443,11 +443,41 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
       {/* Savings Targets Progress */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Savings Goal</h3>
-        <div className="bg-gray-50 p-6 rounded-lg text-center">
-          <div className="text-3xl font-bold text-purple-600 mb-2">15%</div>
-          <div className="text-lg font-medium text-gray-700 mb-1">Monthly Savings Target</div>
-          <div className="text-sm text-gray-600">Recommended savings rate for financial health</div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-6">Savings Goals Progress</h3>
+        <div className="space-y-6">
+          {/* Monthly Goal */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-600">Monthly Savings Goal (15%)</span>
+              <span className="text-sm text-gray-800">Target: 15% of income</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-purple-500 h-3 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(overallSavingsRate, 100)}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Current rate: {overallSavingsRate.toFixed(1)}%</p>
+          </div>
+
+          {/* Annual Performance */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-600">Annual Savings Performance</span>
+              <span className="text-sm text-gray-800">
+                {formatCurrency(totalSavings)} / {formatCurrency(targetSavings)}
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-green-500 h-3 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min((totalSavings / targetSavings) * 100, 100)}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {((totalSavings / targetSavings) * 100).toFixed(1)}% of annual target achieved
+            </p>
+          </div>
         </div>
       </div>
 
