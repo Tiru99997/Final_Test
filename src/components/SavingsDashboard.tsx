@@ -443,69 +443,11 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
       {/* Savings Targets Progress */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Savings Goal Analysis</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium text-gray-700 mb-3">
-              {currentMonthData.isCurrentMonth ? 'Current' : 'Recent'} Month Performance
-              <span className="text-sm font-normal text-gray-500 ml-2">
-                ({currentMonthData.monthName})
-              </span>
-            </h4>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Monthly Income:</span>
-                <span className="text-sm font-medium">{formatCurrency(currentMonthData.income)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Monthly Savings:</span>
-                <span className="text-sm font-medium">{formatCurrency(currentMonthData.savings)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Target (15%):</span>
-                <span className="text-sm font-medium">{formatCurrency(currentMonthData.income * savingsTarget)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="text-sm font-medium text-gray-700">Savings Rate:</span>
-                <span className={`text-sm font-bold ${
-                  currentMonthData.savingsRate >= 15 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {currentMonthData.savingsRate.toFixed(1)}%
-                </span>
-              </div>
-              {!currentMonthData.isCurrentMonth && (
-                <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
-                  <span className="font-medium">Note:</span> Showing most recent month with data
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium text-gray-700 mb-3">Overall Performance</h4>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total Income:</span>
-                <span className="text-sm font-medium">{formatCurrency(totalIncome)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total Savings:</span>
-                <span className="text-sm font-medium">{formatCurrency(totalSavings)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Target (15%):</span>
-                <span className="text-sm font-medium">{formatCurrency(targetSavings)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="text-sm font-medium text-gray-700">Overall Rate:</span>
-                <span className={`text-sm font-bold ${
-                  overallSavingsRate >= 15 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {overallSavingsRate.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Savings Goal</h3>
+        <div className="bg-gray-50 p-6 rounded-lg text-center">
+          <div className="text-3xl font-bold text-purple-600 mb-2">15%</div>
+          <div className="text-lg font-medium text-gray-700 mb-1">Monthly Savings Target</div>
+          <div className="text-sm text-gray-600">Recommended savings rate for financial health</div>
         </div>
       </div>
 
