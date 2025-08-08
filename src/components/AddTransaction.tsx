@@ -21,12 +21,10 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
   onLoadSampleData,
   onLoadSampleBudgets
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
-    type: 'expense' as 'income' | 'expense',
-    category: '',
-    subcategory: '',
+    expenseDetail: '',
     amount: '',
-    description: '',
     date: new Date().toISOString().split('T')[0],
   });
   
@@ -35,80 +33,38 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
   const [showCustomCategory, setShowCustomCategory] = useState(false);
   const [showCustomSubcategory, setShowCustomSubcategory] = useState(false);
 
-  // Get dynamic categories from existing transactions using useMemo for performance
-  const availableCategories = useMemo(() => {
-    const transactionsByType = transactions.filter(t => t.type === formData.type);
-    const dynamicCategories: { [key: string]: string[] } = {};
-    
-    // Start with predefined categories
-    const baseCategories = formData.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-    Object.keys(baseCategories).forEach(category => {
-      dynamicCategories[category] = [...baseCategories[category]];
-    });
-    
-    // Add categories and subcategories from existing transactions
-    transactionsByType.forEach(transaction => {
-      if (!dynamicCategories[transaction.category]) {
-        dynamicCategories[transaction.category] = [];
-      }
-      if (!dynamicCategories[transaction.category].includes(transaction.subcategory)) {
-        dynamicCategories[transaction.category].push(transaction.subcategory);
-      }
-    });
-    
-    // Sort subcategories for each category
-    Object.keys(dynamicCategories).forEach(category => {
-      dynamicCategories[category].sort();
-    });
-    
-    return dynamicCategories;
-  }, [transactions, formData.type]);
-  
-  const availableCategoryNames = useMemo(() => {
-    return Object.keys(availableCategories).sort();
-  }, [availableCategories]);
-  
-  // Reset category and subcategory when type changes
-  useEffect(() => {
-    setFormData(prev => ({ ...prev, category: '', subcategory: '' }));
-  }, [formData.type]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsProcessing(true);
     
-    const finalCategory = showCustomCategory ? customCategory : formData.category;
-    const finalSubcategory = showCustomSubcategory ? customSubcategory : formData.subcategory;
-    
-    if (!finalCategory || !finalSubcategory || !formData.amount) {
+    if (!formData.expenseDetail || !formData.amount) {
       alert('Please fill in all required fields');
+      setIsProcessing(false);
       return;
     }
 
-    const transaction: Transaction = {
-      id: generateId(),
-      date: new Date(formData.date),
-      category: finalCategory,
-      subcategory: finalSubcategory,
-      amount: parseFloat(formData.amount),
-      description: formData.description,
-      type: formData.type,
-    };
+    try {
+      const transaction: Transaction = {
+        id: generateId(),
+        date: new Date(formData.date),
+        category: 'Uncategorized',
+        subcategory: 'Uncategorized',
+        amount: parseFloat(formData.amount),
+        description: formData.expenseDetail,
+        type: 'expense',
+      };
 
-    onAddTransaction(transaction);
-    
-    // Reset form
-    setFormData({
-      type: 'expense',
-      category: '',
-      subcategory: '',
-      amount: '',
-      description: '',
-      date: new Date().toISOString().split('T')[0],
-    });
-    setCustomCategory('');
-    setCustomSubcategory('');
-    setShowCustomCategory(false);
-    setShowCustomSubcategory(false);
+      onAddTransaction(transaction);
+      
+      // Reset form
+      setFormData({
+        expenseDetail: '',
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleCsvImport = (event: React.ChangeEvent<HTMLInputElement>) => {
