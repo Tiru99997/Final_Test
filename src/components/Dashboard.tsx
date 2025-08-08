@@ -46,16 +46,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [insights, setInsights] = useState<string[]>([]);
   
-  // Generate array of months for the slider (12 months back from current date)
+  // Generate array of months that have transaction data
   const generateMonthOptions = () => {
-    const months = [];
-    const currentDate = new Date();
-    for (let i = 0; i < 12; i++) {
-      const month = new Date();
-      month.setMonth(currentDate.getMonth() - (11 - i));
-      months.push(month);
-    }
-    return months;
+    const monthsWithData = Array.from(new Set(
+      transactions.map(t => format(t.date, 'yyyy-MM'))
+    )).sort().map(monthStr => new Date(monthStr + '-01'));
+    
+    return monthsWithData.length > 0 ? monthsWithData : [new Date()];
   };
 
   const monthOptions = generateMonthOptions();
@@ -87,6 +84,23 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
 
   const handleCurrentMonth = () => {
     setSelectedMonth(new Date());
+  };
+
+  // Get months with actual transaction data for charts
+  const getMonthsWithData = (monthCount: number = 6) => {
+    const monthsWithData = Array.from(new Set(
+      transactions.map(t => format(t.date, 'yyyy-MM'))
+    )).sort().reverse().slice(0, monthCount);
+    
+    return monthsWithData.map(month => {
+      const monthDate = new Date(month + '-01');
+      const monthlyData = calculateMonthlyTotals(transactions, budgets, monthDate);
+      return {
+        month: format(monthDate, 'MMM yyyy'),
+        shortMonth: format(monthDate, 'MMM'),
+        ...monthlyData
+      };
+    });
   };
 
   // Calculate KPIs
@@ -148,28 +162,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   const incomeSurplus = monthlyData.income - monthlyData.expenses;
   const budgetVariance = monthlyData.budgetedExpenses - monthlyData.expenses;
 
-  // Chart data preparations
-  const last6Months = Array.from({ length: 6 }, (_, i) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - i);
-    return date;
-  }).reverse();
-
-  const monthlyChartData = last6Months.map(month => 
-    calculateMonthlyTotals(transactions, budgets, month)
-  );
+  // Chart data preparations - only months with data
+  const monthlyChartData = getMonthsWithData(6);
 
   // Combined income and expense line chart
   const incomeExpenseLineData = {
-    labels: monthlyChartData
-      .filter(data => data.income > 0 || data.expenses > 0)
-      .map(data => format(new Date(data.month + '-01'), 'MMM')),
+    labels: monthlyChartData.map(data => data.shortMonth),
     datasets: [
       {
         label: 'Income',
-        data: monthlyChartData
-          .filter(data => data.income > 0 || data.expenses > 0)
-          .map(data => data.income),
+        data: monthlyChartData.map(data => data.income),
         borderColor: '#22C55E',
         backgroundColor: 'rgba(34, 197, 94, 0.1)',
         fill: false,
@@ -177,9 +179,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
       },
       {
         label: 'Expenses',
-        data: monthlyChartData
-          .filter(data => data.income > 0 || data.expenses > 0)
-          .map(data => data.expenses),
+        data: monthlyChartData.map(data => data.expenses),
         borderColor: '#EF4444',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         fill: false,
@@ -245,23 +245,36 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
     }
   };
 
-  // Get last 6 months with data for P&L summary
-  const getMonthsWithData = () => {
-    const monthsWithData = Array.from(new Set(
-      transactions.map(t => format(t.date, 'yyyy-MM'))
-    )).sort().reverse().slice(0, 6);
+  // Get category-wise breakdown for P&L
+  const getCategoryBreakdown = () => {
+    const monthsData = getMonthsWithData(6);
+    const categoryBreakdown = {};
     
-    return monthsWithData.map(month => {
-      const monthDate = new Date(month + '-01');
-      const monthlyData = calculateMonthlyTotals(transactions, budgets, monthDate);
-      return {
-        month: format(monthDate, 'MMM yyyy'),
-        ...monthlyData
-      };
+    monthsData.forEach(monthData => {
+      const monthStr = monthData.month;
+      const monthDate = new Date(monthData.month + ' 01, 2024'); // Parse month string
+      const monthStart = startOfMonth(monthDate);
+      const monthEnd = endOfMonth(monthDate);
+      
+      const monthTransactions = transactions.filter(t => 
+        t.date >= monthStart && t.date <= monthEnd
+      );
+      
+      // Group by category and type
+      monthTransactions.forEach(t => {
+        const key = `${t.type}_${t.category}`;
+        if (!categoryBreakdown[key]) {
+          categoryBreakdown[key] = { category: t.category, type: t.type, months: {} };
+        }
+        categoryBreakdown[key].months[monthStr] = 
+          (categoryBreakdown[key].months[monthStr] || 0) + t.amount;
+      });
     });
+    
+    return { monthsData, categoryBreakdown };
   };
 
-  const monthsWithData = getMonthsWithData();
+  const { monthsData, categoryBreakdown } = getCategoryBreakdown();
 
   // Current month transactions for pie charts
   const currentMonthTransactions = transactions.filter(t => {
@@ -284,16 +297,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Financial Dashboard</h1>
             <p className="text-gray-600 mt-1">
-              {format(selectedMonth, 'MMMM yyyy')} Overview
+              {format(selectedMonth, 'MMMM yyyy')} Overview - Select month below to analyze
             </p>
           </div>
-          <button
-            onClick={handleExportExcel}
-            className="mt-4 sm:mt-0 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-          >
-            <Download className="h-4 w-4" />
-            <span>Export Monthly Report</span>
-          </button>
         </div>
 
         <div className="mt-8 pb-12 flex justify-center">
@@ -413,11 +419,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 scales: {
                   y: { 
                     beginAtZero: true,
-                   suggestedMin: 0,
-                   suggestedMax: Math.max(
-                     Math.max(...incomeExpenseLineData.datasets[0].data) * 1.1,
-                     Math.max(...incomeExpenseLineData.datasets[1].data) * 1.1
-                   ),
+                    min: 0,
+                    max: Math.max(
+                      Math.max(...incomeExpenseLineData.datasets[0].data),
+                      Math.max(...incomeExpenseLineData.datasets[1].data)
+                    ) * 1.2, // 20% padding above highest value
                     ticks: {
                       callback: function(value) {
                         return formatCurrency(value as number);
@@ -475,13 +481,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
       {/* Monthly P&L Summary */}
       <div className="bg-white p-6 rounded-xl shadow-lg">
         <h3 className="text-lg font-semibold text-gray-800 mb-6">Monthly P&L Summary</h3>
-        {monthsWithData.length > 0 ? (
+        {monthsData.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b-2 border-gray-300">
                   <th className="text-left py-3 px-4 font-semibold text-gray-700 bg-gray-50">Particulars</th>
-                  {monthsWithData.slice(0, 6).map((monthData, index) => (
+                  {monthsData.slice(0, 6).map((monthData, index) => (
                     <th key={index} className="text-center py-3 px-3 font-semibold text-gray-700 bg-gray-50 min-w-[120px]">
                       {monthData.month}
                     </th>
@@ -492,13 +498,28 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 {/* Income Section */}
                 <tr className="border-b border-gray-200 bg-green-50">
                   <td className="py-2 px-4 font-semibold text-green-800">INCOME</td>
-                  {monthsWithData.slice(0, 6).map((_, index) => (
+                  {monthsData.slice(0, 6).map((_, index) => (
                     <td key={index} className="py-2 px-3"></td>
                   ))}
                 </tr>
-                <tr className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-2 px-4 pl-8 text-gray-700">Total Income</td>
-                  {monthsWithData.slice(0, 6).map((monthData, index) => (
+                
+                {/* Income Categories */}
+                {Object.values(categoryBreakdown)
+                  .filter(item => item.type === 'income')
+                  .map((item, idx) => (
+                    <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-2 px-4 pl-8 text-gray-700">{item.category}</td>
+                      {monthsData.slice(0, 6).map((monthData, index) => (
+                        <td key={index} className="py-2 px-3 text-center text-green-600 font-medium">
+                          {item.months[monthData.month] ? formatCurrency(item.months[monthData.month]) : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                
+                <tr className="border-b border-gray-200 bg-green-100">
+                  <td className="py-2 px-4 pl-4 font-semibold text-green-800">Total Income</td>
+                  {monthsData.slice(0, 6).map((monthData, index) => (
                     <td key={index} className="py-2 px-3 text-center text-green-600 font-medium">
                       {monthData.income > 0 ? formatCurrency(monthData.income) : '-'}
                     </td>
@@ -508,13 +529,28 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 {/* Expenses Section */}
                 <tr className="border-b border-gray-200 bg-red-50">
                   <td className="py-2 px-4 font-semibold text-red-800">EXPENSES</td>
-                  {monthsWithData.slice(0, 6).map((_, index) => (
+                  {monthsData.slice(0, 6).map((_, index) => (
                     <td key={index} className="py-2 px-3"></td>
                   ))}
                 </tr>
-                <tr className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-2 px-4 pl-8 text-gray-700">Total Expenses</td>
-                  {monthsWithData.slice(0, 6).map((monthData, index) => (
+                
+                {/* Expense Categories */}
+                {Object.values(categoryBreakdown)
+                  .filter(item => item.type === 'expense')
+                  .map((item, idx) => (
+                    <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-2 px-4 pl-8 text-gray-700">{item.category}</td>
+                      {monthsData.slice(0, 6).map((monthData, index) => (
+                        <td key={index} className="py-2 px-3 text-center text-red-600 font-medium">
+                          {item.months[monthData.month] ? formatCurrency(item.months[monthData.month]) : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                
+                <tr className="border-b border-gray-200 bg-red-100">
+                  <td className="py-2 px-4 pl-4 font-semibold text-red-800">Total Expenses</td>
+                  {monthsData.slice(0, 6).map((monthData, index) => (
                     <td key={index} className="py-2 px-3 text-center text-red-600 font-medium">
                       {monthData.expenses > 0 ? formatCurrency(monthData.expenses) : '-'}
                     </td>
@@ -524,7 +560,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 {/* Net Surplus/Deficit */}
                 <tr className="border-t-2 border-gray-300 bg-blue-50">
                   <td className="py-3 px-4 font-bold text-blue-800">NET SURPLUS / (DEFICIT)</td>
-                  {monthsWithData.slice(0, 6).map((monthData, index) => {
+                  {monthsData.slice(0, 6).map((monthData, index) => {
                     const netAmount = monthData.income - monthData.expenses;
                     return (
                       <td key={index} className={`py-3 px-3 text-center font-bold ${
@@ -539,7 +575,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 {/* Savings Rate */}
                 <tr className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="py-2 px-4 pl-8 text-gray-700 font-medium">Savings Rate</td>
-                  {monthsWithData.slice(0, 6).map((monthData, index) => {
+                  {monthsData.slice(0, 6).map((monthData, index) => {
                     const savingsRate = monthData.income > 0 ? ((monthData.income - monthData.expenses) / monthData.income) * 100 : 0;
                     return (
                       <td key={index} className={`py-2 px-3 text-center font-medium ${
