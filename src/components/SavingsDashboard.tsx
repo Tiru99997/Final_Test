@@ -151,6 +151,9 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
     retirement: 500000,
   };
 
+  // Calculate progress towards goals
+  const monthlyProgress = (currentMonthData.savings / savingsTargets.monthly) * 100;
+  const annualProgress = (totalSavings / savingsTargets.annual) * 100;
 
   // Calculate net worth (total savings accumulated over time)
   const calculateNetWorth = () => {
