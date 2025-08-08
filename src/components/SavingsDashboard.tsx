@@ -335,10 +335,11 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       };
     }
     
-    // If current month has no data, find the most recent month with data
+    // If current month has no data, find the most recent month with data from monthlySavingsData
     const monthsWithData = monthlySavingsData
-      .filter(data => data.income > 0 || data.savings > 0)
-      .reverse(); // Most recent first
+      .slice() // Create a copy to avoid mutating original array
+      .reverse() // Most recent first
+      .filter(data => data.income > 0 || data.savings > 0);
     
     if (monthsWithData.length > 0) {
       const recentMonth = monthsWithData[0];
