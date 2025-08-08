@@ -183,6 +183,22 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* Clear Filters Button */}
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedType('all');
+              setSelectedCategory('all');
+              setDateFrom('');
+              setDateTo('');
+              setSortBy('date');
+              setSortOrder('desc');
+            }}
+            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-medium"
+          >
+            Clear Filters
+          </button>
+
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />

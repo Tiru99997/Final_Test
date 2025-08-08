@@ -220,16 +220,18 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
       // Enhanced categorization based on keywords
       if (description.includes('sip') || description.includes('systematic') || subcategory.includes('sip')) {
         acc['SIP'] = (acc['SIP'] || 0) + t.amount;
-      } else if (description.includes('mutual fund') || description.includes('mf ') || description.includes(' mf') || subcategory.includes('mutual')) {
+      } else if (description.includes('mutual fund') || description.includes('mf ') || description.includes(' mf') || description.includes('mutual') || description.includes('fund') || subcategory.includes('mutual')) {
         acc['Mutual Fund'] = (acc['Mutual Fund'] || 0) + t.amount;
       } else if (description.includes('stock') || description.includes('equity') || description.includes('shares') || subcategory.includes('stock')) {
         acc['Stocks'] = (acc['Stocks'] || 0) + t.amount;
-      } else if (description.includes('fd ') || description.includes(' fd') || description.includes('fixed deposit') || subcategory.includes('fd')) {
+      } else if (description.includes('fd ') || description.includes(' fd') || description.includes('fixed deposit') || description.includes('fd') || description.includes('deposit') || subcategory.includes('fd')) {
         acc['Fixed Deposits'] = (acc['Fixed Deposits'] || 0) + t.amount;
-      } else if (description.includes('rd ') || description.includes(' rd') || description.includes('recurring deposit') || subcategory.includes('rd')) {
+      } else if (description.includes('rd ') || description.includes(' rd') || description.includes('recurring deposit') || description.includes('recurring') || subcategory.includes('rd')) {
         acc['Recurring Deposits'] = (acc['Recurring Deposits'] || 0) + t.amount;
       } else if (description.includes('aif') || description.includes('alternative investment') || subcategory.includes('aif')) {
         acc['AIF'] = (acc['AIF'] || 0) + t.amount;
+      } else if (description.includes('investment') || description.includes('invest') || description.includes('saving') || description.includes('ppf') || description.includes('nsc') || description.includes('elss')) {
+        acc['Investment Savings'] = (acc['Investment Savings'] || 0) + t.amount;
       } else {
         acc['Other Savings'] = (acc['Other Savings'] || 0) + t.amount;
       }
@@ -259,7 +261,10 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
 
   // Monthly savings rate bar chart
   const savingsRateData = {
-    labels: monthlySavingsData.map(data => data.shortMonth),
+    labels: monthlySavingsData.map(data => {
+      const date = new Date(data.month);
+      return format(date, "MMM''yy");
+    }),
     datasets: [{
       label: 'Savings Rate (%)',
       data: monthlySavingsData.map(data => data.savingsRate),
@@ -271,10 +276,43 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
   };
 
   // Calculate current month metrics
-  const currentMonthData = monthlySavingsData[monthlySavingsData.length - 1] || {
-    income: 0,
-    savings: 0,
-    savingsRate: 0
+  const currentDate = new Date();
+  const currentMonthStart = startOfMonth(currentDate);
+  const currentMonthEnd = new Date(currentMonthStart);
+  currentMonthEnd.setMonth(currentMonthEnd.getMonth() + 1);
+
+  const currentMonthTransactions = transactions.filter(t => 
+    t.date >= currentMonthStart && t.date < currentMonthEnd
+  );
+
+  const currentMonthIncome = currentMonthTransactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const currentMonthSavings = currentMonthTransactions
+    .filter(t => {
+      if (t.type !== 'expense') return false;
+      
+      // Check if it's in the Savings category
+      if (t.category === 'Savings') return true;
+      
+      // Check if it's an investment-related transaction
+      const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+      const description = (t.description || '').toLowerCase();
+      const subcategory = (t.subcategory || '').toLowerCase();
+      
+      return investmentKeywords.some(keyword => 
+        description.includes(keyword) || subcategory.includes(keyword)
+      );
+    })
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const currentMonthSavingsRate = currentMonthIncome > 0 ? (currentMonthSavings / currentMonthIncome) * 100 : 0;
+
+  const currentMonthData = {
+    income: currentMonthIncome,
+    savings: currentMonthSavings,
+    savingsRate: currentMonthSavingsRate
   };
 
   // Calculate monthly savings target (15% of current month income)
@@ -421,10 +459,16 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
                 scales: {
                   y: { 
                     beginAtZero: true,
-                    ticks: {
-                      callback: function(value) {
+                    min: 0,
+                    max: Math.max(25, Math.max(...monthlySavingsData.map(d => d.savingsRate), 15) + 5),
                         return formatCurrency(value as number);
                       }
+                    }
+                  },
+                  x: {
+                    ticks: {
+                      maxRotation: 45,
+                      minRotation: 45
                     }
                   }
                 }

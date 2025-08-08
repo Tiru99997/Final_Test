@@ -368,7 +368,7 @@ function categorizeTransactionsFallback(transactions: Transaction[]): Transactio
       return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'SIPs' }
     }
     
-    if (description.includes('mutual fund') || description.includes('mf ') || description.includes(' mf')) {
+    if (description.includes('mutual fund') || description.includes('mf ') || description.includes(' mf') || description.includes('mutual') || description.includes('fund')) {
       return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'Mutual Fund' }
     }
     
@@ -376,16 +376,21 @@ function categorizeTransactionsFallback(transactions: Transaction[]): Transactio
       return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'Stocks' }
     }
     
-    if (description.includes('fd ') || description.includes(' fd') || description.includes('fixed deposit')) {
+    if (description.includes('fd ') || description.includes(' fd') || description.includes('fixed deposit') || description.includes('fd') || description.includes('deposit')) {
       return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'Fixed Deposits' }
     }
     
-    if (description.includes('rd ') || description.includes(' rd') || description.includes('recurring deposit')) {
+    if (description.includes('rd ') || description.includes(' rd') || description.includes('recurring deposit') || description.includes('recurring')) {
       return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'Recurring Deposits' }
     }
     
     if (description.includes('aif') || description.includes('alternative investment')) {
       return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'AIF' }
+    }
+    
+    // Additional savings keywords
+    if (description.includes('investment') || description.includes('invest') || description.includes('saving') || description.includes('ppf') || description.includes('nsc') || description.includes('elss')) {
+      return { ...transaction, type: 'expense', category: 'Savings', subcategory: 'Investment Savings' }
     }
     
     if (description.includes('house rent') || description.includes('rent')) {
