@@ -85,11 +85,21 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
 
   // Calculate net worth (total savings accumulated over time)
   const calculateNetWorth = () => {
-    const allSavingsTransactions = transactions.filter(t => 
-      t.type === 'expense' && 
-      t.category === 'Savings' &&
-      t.date <= endOfMonth(selectedMonth)
-    );
+    const allSavingsTransactions = transactions.filter(t => {
+      if (t.type !== 'expense' || t.date > endOfMonth(selectedMonth)) return false;
+      
+      // Check if it's in the Savings category
+      if (t.category === 'Savings') return true;
+      
+      // Check if it's an investment-related transaction
+      const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
+      const description = (t.description || '').toLowerCase();
+      const subcategory = (t.subcategory || '').toLowerCase();
+      
+      return investmentKeywords.some(keyword => 
+        description.includes(keyword) || subcategory.includes(keyword)
+      );
+    });
     return allSavingsTransactions.reduce((sum, t) => sum + t.amount, 0);
   };
 
@@ -344,16 +354,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         <div className="bg-white p-6 rounded-xl shadow-lg">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Income Categories</h3>
           <div className="h-64">
-            {currentMonthTransactions.filter(t => t.type === 'income').length > 0 ? (
+            {Object.keys(INCOME_CATEGORIES).some(cat => (categoryTotals[cat] || 0) > 0) ? (
               <Pie 
                 data={{
-                  labels: Object.keys(INCOME_CATEGORIES).filter(cat => categoryTotals[cat] > 0),
+                  labels: Object.keys(INCOME_CATEGORIES).filter(cat => (categoryTotals[cat] || 0) > 0),
                   datasets: [{
                     data: Object.keys(INCOME_CATEGORIES)
-                      .filter(cat => categoryTotals[cat] > 0)
-                      .map(cat => categoryTotals[cat]),
+                      .filter(cat => (categoryTotals[cat] || 0) > 0)
+                      .map(cat => categoryTotals[cat] || 0),
                     backgroundColor: Object.keys(INCOME_CATEGORIES)
-                      .filter(cat => categoryTotals[cat] > 0)
+                      .filter(cat => (categoryTotals[cat] || 0) > 0)
                       .map(cat => getCategoryColor(cat)),
                     borderWidth: 2,
                     borderColor: '#ffffff',
@@ -386,16 +396,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
         <div className="bg-white p-6 rounded-xl shadow-lg">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Expense Categories</h3>
           <div className="h-64">
-            {currentMonthTransactions.filter(t => t.type === 'expense').length > 0 ? (
+            {Object.keys(EXPENSE_CATEGORIES).some(cat => (categoryTotals[cat] || 0) > 0) ? (
               <Pie 
                 data={{
-                  labels: Object.keys(EXPENSE_CATEGORIES).filter(cat => categoryTotals[cat] > 0),
+                  labels: Object.keys(EXPENSE_CATEGORIES).filter(cat => (categoryTotals[cat] || 0) > 0),
                   datasets: [{
                     data: Object.keys(EXPENSE_CATEGORIES)
-                      .filter(cat => categoryTotals[cat] > 0)
-                      .map(cat => categoryTotals[cat]),
+                      .filter(cat => (categoryTotals[cat] || 0) > 0)
+                      .map(cat => categoryTotals[cat] || 0),
                     backgroundColor: Object.keys(EXPENSE_CATEGORIES)
-                      .filter(cat => categoryTotals[cat] > 0)
+                      .filter(cat => (categoryTotals[cat] || 0) > 0)
                       .map(cat => getCategoryColor(cat)),
                     borderWidth: 2,
                     borderColor: '#ffffff',

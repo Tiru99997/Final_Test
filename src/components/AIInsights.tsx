@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types';
 import { Brain, TrendingUp, AlertCircle, Loader, Sparkles } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
@@ -22,6 +22,13 @@ const AIInsights: React.FC<AIInsightsProps> = ({ transactions }) => {
   const [metrics, setMetrics] = useState<FinancialMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-analyze when transactions change
+  useEffect(() => {
+    if (transactions.length > 0) {
+      analyzeFinances();
+    }
+  }, [transactions]);
 
   const analyzeFinances = async () => {
     setLoading(true);
@@ -64,47 +71,6 @@ const AIInsights: React.FC<AIInsightsProps> = ({ transactions }) => {
     }
   };
 
-  const categorizeTransactions = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transactions: transactions.map(t => ({
-            id: t.id,
-            date: t.date.toISOString().split('T')[0],
-            description: t.description || `${t.category} - ${t.subcategory}`,
-            amount: t.amount,
-            category: t.category,
-            subcategory: t.subcategory,
-            type: t.type
-          })),
-          action: 'categorize'
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Categorization failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      alert(`Successfully categorized ${data.categorizedTransactions.length} transactions!`);
-    } catch (err) {
-      console.error('Error categorizing transactions:', err);
-      setError(err instanceof Error ? err.message : 'Failed to categorize transactions');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Header */}
@@ -115,31 +81,12 @@ const AIInsights: React.FC<AIInsightsProps> = ({ transactions }) => {
         </div>
         
         <div className="flex flex-wrap gap-4">
-          <button
-            onClick={analyzeFinances}
-            disabled={loading || transactions.length === 0}
-            className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            {loading ? (
+          {loading && (
+            <div className="flex items-center space-x-2 text-purple-600">
               <Loader className="h-4 w-4 animate-spin" />
-            ) : (
-              <TrendingUp className="h-4 w-4" />
-            )}
-            <span>Analyze Finances</span>
-          </button>
-          
-          <button
-            onClick={categorizeTransactions}
-            disabled={loading || transactions.length === 0}
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            {loading ? (
-              <Loader className="h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )}
-            <span>Auto-Categorize</span>
-          </button>
+              <span>Analyzing your financial data...</span>
+            </div>
+          )}
         </div>
 
         {transactions.length === 0 && (
