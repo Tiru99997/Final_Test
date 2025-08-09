@@ -158,62 +158,9 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
     setCategorizingSavings(true);
     
     try {
-      // Check if Supabase configuration is available
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseAnonKey || !supabaseUrl.startsWith('http')) {
-        console.warn('Supabase configuration not available or invalid, using fallback categorization');
-        useFallbackCategorization();
-        return;
-      }
-      
-      const apiUrl = `${supabaseUrl}/functions/v1/financial-analysis`;
-      
-      // Validate URL format before making request
-      try {
-        new URL(apiUrl);
-      } catch (urlError) {
-        console.error('Invalid Supabase URL format:', apiUrl);
-        useFallbackCategorization();
-        return;
-      }
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transactions: savingsTransactions.map(t => ({
-            id: t.id,
-            date: t.date.toISOString().split('T')[0],
-            description: t.description || t.subcategory,
-            amount: t.amount,
-            type: t.type
-          })),
-          action: 'categorize-savings'
-        })
-      });
-
-      if (!response.ok) {
-        console.error(`Savings categorization failed: ${response.status}`);
-        useFallbackCategorization();
-        return;
-      }
-
-      const data = await response.json();
-      const categorizedSavings = data.categorizedSavings || {};
-      
-      // Group by AI-determined categories
-      const groupedSavings = savingsTransactions.reduce((acc, t, index) => {
-        const aiCategory = categorizedSavings[index]?.category || t.subcategory;
-        acc[aiCategory] = (acc[aiCategory] || 0) + t.amount;
-        return acc;
-      }, {} as { [key: string]: number });
-      
-      setSavingsByCategory(groupedSavings);
+      // Use fallback categorization since Edge Functions are not available
+      console.log('Using fallback savings categorization since Edge Functions are not available');
+      useFallbackCategorization();
     } catch (error) {
       console.error('Error categorizing savings:', error);
       useFallbackCategorization();

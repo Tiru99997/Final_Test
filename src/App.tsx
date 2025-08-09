@@ -157,29 +157,10 @@ function App() {
 
   const triggerAIInsights = async () => {
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
-      
-      await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transactions: transactions.map(t => ({
-            id: t.id,
-            date: t.date.toISOString().split('T')[0],
-            description: t.description || `${t.category} - ${t.subcategory}`,
-            amount: t.amount,
-            category: t.category,
-            subcategory: t.subcategory,
-            type: t.type
-          })),
-          action: 'analyze'
-        })
-      });
+      // Skip AI insights trigger since Edge Functions are not available
+      console.log('AI insights would be triggered here if Edge Functions were available');
     } catch (error) {
-      console.error('Auto AI insights failed:', error);
+      console.log('AI insights trigger skipped:', error);
     }
   };
 

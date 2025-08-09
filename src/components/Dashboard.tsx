@@ -254,51 +254,45 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   const generateInsights = async () => {
     setLoadingInsights(true);
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
+      // Use fallback insights since Edge Functions are not available
+      const fallbackInsights = [];
       
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transactions: transactions.map(t => ({
-            id: t.id,
-            date: t.date.toISOString().split('T')[0],
-            description: t.description || `${t.category} - ${t.subcategory}`,
-            amount: t.amount,
-            category: t.category,
-            subcategory: t.subcategory,
-            type: t.type
-          })),
-          action: 'analyze'
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setInsights(data.metrics?.insights || []);
+      if (kpis.debtToIncomeRatio > 36) {
+        fallbackInsights.push(`Your debt-to-income ratio is ${kpis.debtToIncomeRatio.toFixed(1)}%, which is above the recommended 36%. Consider paying down high-interest debt first, starting with credit cards, then personal loans. Focus on the debt avalanche method - pay minimums on all debts, then put extra money toward the highest interest rate debt.`);
       } else {
-        const fallbackInsights = [];
-        
-        if (kpis.debtToIncomeRatio > 36) {
-          fallbackInsights.push(`Your debt-to-income ratio is ${kpis.debtToIncomeRatio.toFixed(1)}%, which is above the recommended 36%. Consider paying down high-interest debt first.`);
-        } else {
-          fallbackInsights.push(`Your debt-to-income ratio of ${kpis.debtToIncomeRatio.toFixed(1)}% is healthy and within recommended limits.`);
-        }
-        
-        if (kpis.savingsRatio < 15) {
-          fallbackInsights.push(`Your savings rate of ${kpis.savingsRatio.toFixed(1)}% is below the recommended 15%. Try to increase your savings by reducing discretionary spending.`);
-        } else {
-          fallbackInsights.push(`Excellent! Your savings rate of ${kpis.savingsRatio.toFixed(1)}% exceeds the recommended 15%.`);
-        }
-        
-        setInsights(fallbackInsights);
+        fallbackInsights.push(`Your debt-to-income ratio of ${kpis.debtToIncomeRatio.toFixed(1)}% is healthy and within recommended limits. This gives you flexibility to increase investments or build emergency funds.`);
       }
+      
+      if (kpis.savingsRatio < 15) {
+        fallbackInsights.push(`Your savings rate of ${kpis.savingsRatio.toFixed(1)}% is below the recommended 15%. Try the 50/30/20 rule: 50% needs, 30% wants, 20% savings. Start by tracking expenses and identifying areas to cut back.`);
+      } else {
+        fallbackInsights.push(`Excellent! Your savings rate of ${kpis.savingsRatio.toFixed(1)}% exceeds the recommended 15%. Consider increasing your investment allocation or exploring tax-advantaged accounts.`);
+      }
+      
+      // Add spending pattern insights
+      if (topExpenseCategories.length > 0) {
+        const topCategory = topExpenseCategories[0];
+        fallbackInsights.push(`Your highest expense category is ${topCategory.category} at ${formatCurrency(topCategory.amount)} (${topCategory.percentage.toFixed(1)}% of expenses). Consider reviewing this category for potential savings opportunities.`);
+      }
+      
+      // Add emergency fund insight
+      const monthlyExpenses = kpis.avgMonthlyExpense;
+      const emergencyFundTarget = monthlyExpenses * 6;
+      if (kpis.netWorth < emergencyFundTarget) {
+        fallbackInsights.push(`Build an emergency fund of ${formatCurrency(emergencyFundTarget)} (6 months of expenses). You currently have ${formatCurrency(kpis.netWorth)} saved. Consider high-yield savings accounts or liquid funds for emergency funds.`);
+      }
+      
+      setInsights(fallbackInsights);
     } catch (error) {
       console.error('Error generating insights:', error);
-      setInsights(['Unable to generate insights at this time. Please try again later.']);
+      // Provide basic fallback insights even on error
+      const basicInsights = [
+        'Track your expenses regularly to identify spending patterns and areas for improvement.',
+        'Aim for a savings rate of at least 15% of your income for long-term financial health.',
+        'Build an emergency fund covering 3-6 months of expenses before investing heavily.',
+        'Review and optimize your largest expense categories for potential savings.'
+      ];
+      setInsights(basicInsights);
     } finally {
       setLoadingInsights(false);
     }

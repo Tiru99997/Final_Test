@@ -80,49 +80,67 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
 
   const categorizeTransaction = async (transaction: any): Promise<Transaction | null> => {
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transactions: [transaction],
-          action: 'categorize'
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Categorization failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const categorized = data.categorizedTransactions[0];
-      
-      return {
-        id: transaction.id,
-        date: new Date(transaction.date),
-        category: categorized.category || 'Other',
-        subcategory: categorized.subcategory || 'Other',
-        amount: transaction.amount,
-        description: transaction.description,
-        type: categorized.type || 'expense',
-      };
+      // Use fallback categorization since Edge Functions are not available
+      return categorizeTransactionFallback(transaction);
     } catch (error) {
       console.error('Error in AI categorization:', error);
       // Fallback to uncategorized
-      return {
-        id: transaction.id,
-        date: new Date(transaction.date),
-        category: 'Other',
-        subcategory: 'Other',
-        amount: transaction.amount,
-        description: transaction.description,
-        type: 'expense',
-      };
+      return categorizeTransactionFallback(transaction);
     }
+  };
+
+  const categorizeTransactionFallback = (transaction: any): Transaction => {
+    const description = (transaction.description || '').toLowerCase();
+    
+    // Income keywords
+    const incomeKeywords = [
+      'salary', 'wage', 'wages', 'bonus', 'income', 'pay', 'paycheck', 'payment',
+      'dividend', 'interest', 'rent income', 'freelance', 'commission', 'refund',
+      'cashback', 'reimbursement', 'allowance', 'stipend', 'pension', 'benefits'
+    ];
+    const isIncome = incomeKeywords.some(keyword => description.includes(keyword));
+    
+    if (isIncome) {
+      if (description.includes('salary') || description.includes('wage') || description.includes('bonus')) {
+        return { ...transaction, id: transaction.id, date: new Date(transaction.date), type: 'income', category: 'Salary', subcategory: 'Salary' };
+      }
+      if (description.includes('dividend') || description.includes('interest')) {
+        return { ...transaction, id: transaction.id, date: new Date(transaction.date), type: 'income', category: 'Dividend', subcategory: 'Dividends' };
+      }
+      return { ...transaction, id: transaction.id, date: new Date(transaction.date), type: 'income', category: 'Salary', subcategory: 'Salary' };
+    }
+    
+    // Expense categorization
+    if (description.includes('grocery') || description.includes('food') || description.includes('supermarket')) {
+      return { ...transaction, id: transaction.id, date: new Date(transaction.date), type: 'expense', category: 'Living Expenses', subcategory: 'Grocery' };
+    }
+    
+    if (description.includes('rent') || description.includes('rental')) {
+      return { ...transaction, id: transaction.id, date: new Date(transaction.date), type: 'expense', category: 'Rental', subcategory: 'House Rent' };
+    }
+    
+    if (description.includes('fuel') || description.includes('gas') || description.includes('petrol')) {
+      return { ...transaction, id: transaction.id, date: new Date(transaction.date), type: 'expense', category: 'Transportation', subcategory: 'Fuel' };
+    }
+    
+    if (description.includes('medical') || description.includes('doctor') || description.includes('hospital')) {
+      return { ...transaction, id: transaction.id, date: new Date(transaction.date), type: 'expense', category: 'Healthcare', subcategory: 'Medical Bills' };
+    }
+    
+    if (description.includes('movie') || description.includes('restaurant') || description.includes('dining')) {
+      return { ...transaction, id: transaction.id, date: new Date(transaction.date), type: 'expense', category: 'Entertainment', subcategory: 'Dining Out' };
+    }
+    
+    // Default to Other for unrecognized transactions
+    return {
+      id: transaction.id,
+      date: new Date(transaction.date),
+      category: 'Other',
+      subcategory: 'Other',
+      amount: transaction.amount,
+      description: transaction.description,
+      type: 'expense',
+    };
   };
 
   const handleCsvImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,43 +242,27 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
 
   const categorizeAndImportTransactions = async (transactions: Transaction[]) => {
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transactions: transactions.map(t => ({
-            id: t.id,
-            date: t.date.toISOString().split('T')[0],
-            description: t.description,
-            amount: t.amount,
-            type: t.type
-          })),
-          action: 'categorize'
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Categorization failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const categorizedTransactions = data.categorizedTransactions.map((cat: any, index: number) => ({
-        ...transactions[index],
-        category: cat.category || 'Other',
-        subcategory: cat.subcategory || 'Other',
-        type: cat.type || 'expense',
+      // Use fallback categorization for all transactions
+      const categorizedTransactions = transactions.map(t => categorizeTransactionFallback({
+        id: t.id,
+        date: t.date.toISOString().split('T')[0],
+        description: t.description,
+        amount: t.amount,
+        type: t.type
       }));
       
       onBulkImport(categorizedTransactions);
     } catch (error) {
       console.error('Error categorizing imported transactions:', error);
-      // Import without categorization as fallback
-      onBulkImport(transactions);
+      // Use fallback categorization as final fallback
+      const categorizedTransactions = transactions.map(t => categorizeTransactionFallback({
+        id: t.id,
+        date: t.date.toISOString().split('T')[0],
+        description: t.description,
+        amount: t.amount,
+        type: t.type
+      }));
+      onBulkImport(categorizedTransactions);
     }
   };
   const handleCsvExport = () => {
