@@ -113,7 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   const getMonthsWithData = (monthCount: number = 6) => {
     const monthsWithData = Array.from(new Set(
       transactions.map(t => format(t.date, 'yyyy-MM'))
-    )).sort().reverse().slice(0, monthCount);
+    )).sort().slice(-monthCount);
     
     return monthsWithData.map(month => {
       const monthDate = new Date(month + '-01');
