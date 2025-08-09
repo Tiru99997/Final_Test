@@ -253,12 +253,21 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   const generateInsights = async () => {
     setLoadingInsights(true);
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-analysis`;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      // Check if Supabase environment variables are available
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.warn('Supabase environment variables not configured, using fallback insights');
+        throw new Error('Supabase not configured');
+      }
+      
+      const apiUrl = `${supabaseUrl}/functions/v1/financial-analysis`;
       
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -281,38 +290,27 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
       } else {
         const fallbackInsights = [];
         
-        // Calculate savings rate for consistency
-        const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-        const savingsTransactions = transactions.filter(t => {
-          if (t.type !== 'expense') return false;
-          if (t.category === 'Savings') return true;
-          const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
-          const description = (t.description || '').toLowerCase();
-          const subcategory = (t.subcategory || '').toLowerCase();
-          return investmentKeywords.some(keyword => 
-            description.includes(keyword) || subcategory.includes(keyword)
-          );
-        });
-        const totalSavings = savingsTransactions.reduce((sum, t) => sum + t.amount, 0);
-        const actualSavingsRate = totalIncome > 0 ? (totalSavings / totalIncome) * 100 : 0;
-        
-        if (kpis.debtToIncomeRatio > 36) {
-          fallbackInsights.push(`Your debt-to-income ratio is ${kpis.debtToIncomeRatio.toFixed(1)}%, which is above the recommended 36%. Consider paying down high-interest debt first.`);
-        } else {
-          fallbackInsights.push(`Your debt-to-income ratio of ${kpis.debtToIncomeRatio.toFixed(1)}% is healthy and within recommended limits.`);
-        }
-        
-        if (actualSavingsRate < 15) {
-          fallbackInsights.push(`Your savings rate of ${actualSavingsRate.toFixed(1)}% is below the recommended 15%. Try to increase your savings by reducing discretionary spending.`);
-        } else {
-          fallbackInsights.push(`Excellent! Your savings rate of ${actualSavingsRate.toFixed(1)}% exceeds the recommended 15%.`);
-        }
-        
-        setInsights(fallbackInsights);
+        throw new Error('API request failed');
       }
     } catch (error) {
       console.error('Error generating insights:', error);
-      setInsights(['Unable to generate insights at this time. Please try again later.']);
+      
+      // Generate fallback insights using local calculations
+      const fallbackInsights = [];
+      
+      if (kpis.debtToIncomeRatio > 36) {
+        fallbackInsights.push(`Your debt-to-income ratio is ${kpis.debtToIncomeRatio.toFixed(1)}%, which is above the recommended 36%. Consider paying down high-interest debt first.`);
+      } else {
+        fallbackInsights.push(`Your debt-to-income ratio of ${kpis.debtToIncomeRatio.toFixed(1)}% is healthy and within recommended limits.`);
+      }
+      
+      if (kpis.savingsRatio < 15) {
+        fallbackInsights.push(`Your savings rate of ${kpis.savingsRatio.toFixed(1)}% is below the recommended 15%. Try to increase your savings by reducing discretionary spending.`);
+      } else {
+        fallbackInsights.push(`Excellent! Your savings rate of ${kpis.savingsRatio.toFixed(1)}% exceeds the recommended 15%.`);
+      }
+      
+      setInsights(fallbackInsights);
     } finally {
       setLoadingInsights(false);
     }
