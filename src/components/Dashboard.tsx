@@ -101,18 +101,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   };
 
   // Get months with actual transaction data for charts
-  const getMonthsWithData = (monthCount: number = 6, chronological: boolean = false) => {
+  const getMonthsWithData = (monthCount: number = 6) => {
     const monthsWithData = Array.from(new Set(
       transactions.map(t => format(t.date, 'yyyy-MM'))
-    )).sort();
-    
-    if (chronological) {
-      // For chronological order, take the most recent months and keep them in chronological order
-      return monthsWithData.slice(-monthCount);
-    } else {
-      // For reverse order (most recent first)
-      return monthsWithData.reverse().slice(0, monthCount);
-    }
+    )).sort().reverse().slice(0, monthCount);
     
     return monthsWithData.map(month => {
       const monthDate = new Date(month + '-01');
@@ -202,7 +194,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
 
   // Auto-generate insights when transactions change
   useEffect(() => {
-    if (transactions.length > 0 && !loadingInsights) {
+    if (transactions.length > 0 && !loadingInsights && insights.length === 0) {
       generateInsights();
     }
   }, [transactions, viewMode, selectedMonth]);
@@ -281,31 +273,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
       } else {
         const fallbackInsights = [];
         
-        // Calculate savings rate for consistency
-        const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-        const savingsTransactions = transactions.filter(t => {
-          if (t.type !== 'expense') return false;
-          if (t.category === 'Savings') return true;
-          const investmentKeywords = ['sip', 'mutual fund', 'mf', 'stock', 'stocks', 'equity', 'shares', 'fd', 'fixed deposit', 'rd', 'recurring deposit', 'aif', 'alternative investment'];
-          const description = (t.description || '').toLowerCase();
-          const subcategory = (t.subcategory || '').toLowerCase();
-          return investmentKeywords.some(keyword => 
-            description.includes(keyword) || subcategory.includes(keyword)
-          );
-        });
-        const totalSavings = savingsTransactions.reduce((sum, t) => sum + t.amount, 0);
-        const actualSavingsRate = totalIncome > 0 ? (totalSavings / totalIncome) * 100 : 0;
-        
         if (kpis.debtToIncomeRatio > 36) {
           fallbackInsights.push(`Your debt-to-income ratio is ${kpis.debtToIncomeRatio.toFixed(1)}%, which is above the recommended 36%. Consider paying down high-interest debt first.`);
         } else {
           fallbackInsights.push(`Your debt-to-income ratio of ${kpis.debtToIncomeRatio.toFixed(1)}% is healthy and within recommended limits.`);
         }
         
-        if (actualSavingsRate < 15) {
-          fallbackInsights.push(`Your savings rate of ${actualSavingsRate.toFixed(1)}% is below the recommended 15%. Try to increase your savings by reducing discretionary spending.`);
+        if (kpis.savingsRatio < 15) {
+          fallbackInsights.push(`Your savings rate of ${kpis.savingsRatio.toFixed(1)}% is below the recommended 15%. Try to increase your savings by reducing discretionary spending.`);
         } else {
-          fallbackInsights.push(`Excellent! Your savings rate of ${actualSavingsRate.toFixed(1)}% exceeds the recommended 15%.`);
+          fallbackInsights.push(`Excellent! Your savings rate of ${kpis.savingsRatio.toFixed(1)}% exceeds the recommended 15%.`);
         }
         
         setInsights(fallbackInsights);
