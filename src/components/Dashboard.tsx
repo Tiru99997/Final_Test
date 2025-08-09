@@ -533,14 +533,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 },
                 scales: {
                   y: {
-                    beginAtZero: false,
-                    min: 85000,
-                    max: 135000,
+                    beginAtZero: true,
                     grid: {
                       color: 'rgba(0, 0, 0, 0.1)',
                     },
                     ticks: {
-                      stepSize: 10000,
                       callback: function(value) {
                         return formatCurrency(value as number);
                       }
