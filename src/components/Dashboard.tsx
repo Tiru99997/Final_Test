@@ -212,10 +212,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   const budgetVariance = monthlyData.budgetedExpenses - monthlyData.expenses;
 
   // Chart data preparations - only months with data
-  const monthlyChartData = getMonthsWithData(6, true); // true for chronological order
+  const monthlyChartData = getMonthsWithData(6);
 
   // Combined income and expense line chart
-
   const incomeExpenseLineData = {
     labels: monthlyChartData.map(data => data.shortMonth),
     datasets: [
@@ -533,11 +532,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
                 },
                 scales: {
                   y: {
-                    beginAtZero: true,
+                    beginAtZero: false,
+                    min: 85000,
+                    max: 135000,
                     grid: {
                       color: 'rgba(0, 0, 0, 0.1)',
                     },
                     ticks: {
+                      stepSize: 10000,
                       callback: function(value) {
                         return formatCurrency(value as number);
                       }
