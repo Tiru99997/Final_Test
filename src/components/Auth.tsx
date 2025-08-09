@@ -30,11 +30,15 @@ const Auth: React.FC = () => {
       if (error) {
         if (error.message.includes('Network error') || error.message.includes('fetch')) {
           setError('Connection failed. Please check your internet connection and verify that your Supabase project is properly configured.');
+        } else if (error.message.includes('Invalid login credentials')) {
+          setError('Invalid email or password. Please check your credentials and try again.');
+        } else if (error.message.includes('Email not confirmed')) {
+          setError('Please check your email inbox (including spam folder) for the confirmation link and click it before signing in.');
         } else {
           setError(error.message);
         }
       } else if (isSignUp) {
-        setError('Account created successfully! You can now sign in.');
+        setError('Account created successfully! Please check your email inbox (including spam folder) for the confirmation link. You must confirm your email before signing in.');
       }
     } catch (err) {
       console.error('Auth error:', err);
