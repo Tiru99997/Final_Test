@@ -277,7 +277,7 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
     }),
     datasets: [{
       label: 'Savings Rate (%)',
-      data: monthlySavingsData.map(data => data.savingsRate),
+      data: monthlySavingsData.map(data => Math.round(data.savingsRate * 10) / 10), // Round to 1 decimal place
       backgroundColor: 'rgba(5, 150, 105, 0.8)',
       borderColor: '#059669',
       borderWidth: 1,
@@ -574,11 +574,11 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
                   scales: {
                     y: { 
                       beginAtZero: false,
-                      min: Math.max(0, Math.min(...monthlySavingsData.map(d => d.savingsRate)) - 2),
-                      max: Math.max(20, Math.max(...monthlySavingsData.map(d => d.savingsRate)) + 2),
+                      min: monthlySavingsData.length > 0 ? Math.max(0, Math.floor(Math.min(...monthlySavingsData.map(d => d.savingsRate))) - 2) : 0,
+                      max: monthlySavingsData.length > 0 ? Math.max(20, Math.ceil(Math.max(...monthlySavingsData.map(d => d.savingsRate))) + 2) : 20,
                       ticks: {
                         callback: function(value) {
-                          return value + '%';
+                          return Math.round(value as number) + '%';
                         }
                       }
                     }
