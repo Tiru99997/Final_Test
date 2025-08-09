@@ -60,24 +60,8 @@ export const useAuth = () => {
 
     try {
       const { data, error } = await supabase.auth.signUp({
-      const { error } = await supabase.auth.signOut();
-      return { error };
-    } catch (err) {
-      console.error('Network error during sign out:', err);
-      return { error: { message: 'Network error: Unable to sign out. Please try refreshing the page.' } };
-    }
-  };
-
-  return {
-    user,
-    session,
-    loading,
-    error,
-    signUp,
-    signIn,
-    signOut,
-  };
-};
+        email,
+        password,
       });
       return { data, error };
     } catch (err) {
@@ -109,30 +93,19 @@ export const useAuth = () => {
     }
 
     try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    return { data, error };
-  };
-
-  const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { data, error };
-  };
-
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    return { error };
+      const { error } = await supabase.auth.signOut();
+      return { error };
+    } catch (err) {
+      console.error('Network error during sign out:', err);
+      return { error: { message: 'Network error: Unable to sign out. Please try refreshing the page.' } };
+    }
   };
 
   return {
     user,
     session,
     loading,
+    error,
     signUp,
     signIn,
     signOut,
