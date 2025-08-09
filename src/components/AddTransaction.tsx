@@ -265,9 +265,9 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
   };
   const handleCsvExport = () => {
     const csv = [
-      'Date,Type,Category,Subcategory,Amount',
+      'Date,Type,Category,Subcategory,Amount,Description',
       ...transactions.map(t => 
-        `${t.date.toISOString().split('T')[0]},${t.type},${t.category},${t.subcategory},${t.amount}`
+        `${t.date.toISOString().split('T')[0]},${t.type},${t.category},${t.subcategory},${t.amount},"${t.description || ''}"`
       )
     ].join('\n');
 
@@ -275,7 +275,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `expense-tracker-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `budget-tracker-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -314,7 +314,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({
             className="flex items-center space-x-2 bg-green-50 hover:bg-green-100 px-4 py-2 rounded-lg transition-colors"
           >
             <Download className="h-5 w-5 text-green-600" />
-            <span className="text-green-600 font-medium">Export File</span>
+            <span className="text-green-600 font-medium">Download Expense Template</span>
           </button>
         </div>
         
