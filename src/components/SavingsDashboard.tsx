@@ -586,7 +586,7 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
                     x: {
                       ticks: {
                         callback: function(value, index) {
-                          return monthlyChartData[index]?.shortMonth || '';
+                          return monthlySavingsData[index]?.shortMonth || '';
                         }
                       }
                     }
