@@ -579,6 +579,14 @@ const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ transactions }) => 
                       ticks: {
                         callback: function(value) {
                           return Math.round(value as number) + '%';
+                        },
+                        stepSize: 1
+                      }
+                    },
+                    x: {
+                      ticks: {
+                        callback: function(value, index) {
+                          return monthlyChartData[index]?.shortMonth || '';
                         }
                       }
                     }
