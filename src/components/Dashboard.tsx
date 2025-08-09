@@ -215,41 +215,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, budgets }) => {
   const monthlyChartData = getMonthsWithData(6, true); // true for chronological order
 
   // Combined income and expense line chart
-  const incomeExpenseLineData = {
-    labels: monthlyChartData.map(data => data.shortMonth),
-    datasets: [
-      {
-        label: 'Income',
-        data: monthlyChartData.map(data => data.income),
-        borderColor: '#10B981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        fill: false,
-        tension: 0.1,
-        pointRadius: 8,
-        pointHoverRadius: 10,
-        borderWidth: 5,
-        pointBackgroundColor: '#10B981',
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 4,
-      },
-      {
-        label: 'Expenses (Excluding Savings)', 
-        data: monthlyChartData.map(data => data.expensesExcludingSavings),
-        borderColor: '#EF4444',
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-        fill: false,
-        tension: 0.1,
-        pointRadius: 8,
-        pointHoverRadius: 10,
-        borderWidth: 5,
-        pointBackgroundColor: '#EF4444',
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 4,
-      }
-    ]
-  };
 
-  // Combined income and expense line chart
   const incomeExpenseLineData = {
     labels: monthlyChartData.map(data => data.shortMonth),
     datasets: [
