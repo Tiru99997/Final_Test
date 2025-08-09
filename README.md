@@ -1,1 +1,1 @@
-Expense_Tracker
+Spendly
